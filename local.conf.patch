@@ -1,0 +1,25 @@
+# Fix OpenSSL 3.2.6 EC2 linking error
+# Error: undefined reference to `BN_GF2m_add', `BN_GF2m_mod_inv'
+# Solution: Disable EC2 support (elliptic curves over GF(2^m))
+# Impact: Minimal - EC2 rarely used in practice
+EXTRA_OECONF:append:pn-openssl = " no-ec2m"
+
+# Build performance tuning (adjust based on your CPU cores)
+BB_NUMBER_THREADS ?= "8"
+PARALLEL_MAKE ?= "-j 8"
+
+# Disable LTO globally to fix GCC/binutils circular dependency
+# Error: GCC 13.4.0 / binutils 2.42 LTO-related linking errors
+# Symptoms: undefined reference to `sched_finish_ready_list', `haifa_sched_init'
+# Cause: LTO requires complete program view, impossible during GCC bootstrap
+TARGET_CFLAGS:remove = "-flto"
+TARGET_CXXFLAGS:remove = "-flto"
+SELECTED_OPTIMIZATION:remove = "-flto"
+
+# Disable LTO for EDK2 firmware specifically
+# Error: GenFw: ERROR 3000: Invalid DOS header signature in Shell.dll
+# Cause: LTO interferes with EDK2 build system's GenFw tool
+# This fixes UEFI firmware build for Jetson boot process
+TARGET_CFLAGS:pn-edk2-firmware-tegra:remove = "-flto"
+TARGET_CXXFLAGS:pn-edk2-firmware-tegra:remove = "-flto"
+SELECTED_OPTIMIZATION:pn-edk2-firmware-tegra:remove = "-flto"

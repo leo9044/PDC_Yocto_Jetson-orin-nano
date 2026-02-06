@@ -1,0 +1,80 @@
+#! /bin/bash
+
+set -e
+
+PROGNAME=$(basename $0)
+
+usage()
+{
+    cat >&2 <<EOF
+Usage: $PROGNAME --distro <DISTRO> [<options>]
+Options:
+    -h, --help         Print this usage message
+    -d, --distro       Set the DISTRO name for newly created distro layer
+
+Arguments:
+Examples:
+- To create a new distro layer:
+  $ $PROGNAME --distro testdistro
+EOF
+}
+
+DISTRO_NAME=""
+
+# get command line options
+SHORTOPTS="hd:"
+LONGOPTS="help,distro:"
+
+ARGS=$(getopt --options $SHORTOPTS --longoptions $LONGOPTS --name $PROGNAME -- "$@" )
+if [ $? != 0 ]; then
+   usage
+   exit 1
+fi
+
+eval set -- "$ARGS"
+while true;
+do
+    case $1 in
+        -h | --help)       usage; exit 0 ;;
+        -d | --distro)     DISTRO_NAME="$2"; shift 2;;
+        -- )               shift; break ;;
+        * )                break ;;
+    esac
+done
+
+if [ -z "$DISTRO_NAME" ]; then
+    usage
+    echo "ERROR: You must specify DISTRO." >&2
+    exit 1
+fi
+
+TOP_DIR=$(dirname $(dirname $0))
+TOP_DIR=$(readlink -f "$TOP_DIR")
+LAYER_DIR="${TOP_DIR}/layers/meta-${DISTRO_NAME}"
+
+if [ -d layers/meta-tegrademo ]; then
+
+    echo -n "Creating a distro layer based on meta-tegrademo..."
+    
+    cp -a layers/meta-tegrademo ${LAYER_DIR}
+
+    # Delete tegrademo recipes
+    rm -rf ${LAYER_DIR}/recipes-*
+
+    # Adjust the data in templates
+    mv ${LAYER_DIR}/conf/templates/tegrademo ${LAYER_DIR}/conf/templates/${DISTRO_NAME}
+    rm -rf ${LAYER_DIR}/conf/templates/tegrademo
+
+    # Adjust the data in conf/distro
+    cat ${LAYER_DIR}/conf/distro/tegrademo.conf > ${LAYER_DIR}/conf/distro/${DISTRO_NAME}.conf
+    rm -rf ${LAYER_DIR}/conf/distro/tegrademo.conf
+
+    # Change Layer attributes from tegrademo
+    find ${LAYER_DIR} -type f -exec sed -i "s/tegrademo/${DISTRO_NAME}/" {} \;
+
+    echo "Done!"
+else
+    echo "Warning: layers/meta-tegrademo not present" >&2
+    echo "This script uses meta-tegrademo as template"
+    exit 1
+fi

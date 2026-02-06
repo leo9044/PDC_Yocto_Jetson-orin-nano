@@ -1,0 +1,21 @@
+#! /bin/sh
+NAME=setup-nv-boot-control
+DESC="Set up redundant boot configuration"
+
+case "$1" in
+  start|restart)
+      echo -n "Running $DESC: "
+      mkdir -p -m0755 /run/nv_boot_control
+      @bindir@/setup-nv-boot-control
+      echo "[OK]"
+      ;;
+  stop)
+      ;;
+  *)
+      N=/etc/init.d/$NAME
+      echo "Usage: $N {start|stop|restart}" >&2
+      exit 1
+      ;;
+esac
+
+exit 0

@@ -1,0 +1,41 @@
+#!/bin/sh
+TARGET="@TARGET@"
+BOOTDEV="@BOOTDEV@"
+sysconfdir="@sysconfdir@"
+controlfile="${sysconfdir}/nv_boot_control.conf"
+
+source /usr/bin/uefi_common.func
+
+[ ! -e "$controlfile" ] || exit 0
+
+if [ ! -e "${sysconfdir}/nv_boot_control.template" ]; then
+    echo "ERR: nv_boot_control.conf template file not found" >&2
+    exit 1
+fi
+
+boardspec=$(tegra-boardspec 2>/dev/null)
+if [ -z "${boardspec}" ]; then
+    echo "ERR: could not retrieve boardspec for nv_boot_control.conf setup" >&2
+    exit 1
+fi
+rc=0
+set_efi_var "TegraPlatformSpec" "781e084c-a330-417c-b678-38e696380cb9" "${boardspec}-${TARGET}-" "write-once" || rc=1
+compatspec=$(echo "$boardspec" | gen_compat_spec)
+if [ -z "$compatspec" ]; then
+    compatsed="-e/^COMPATIBLE_SPEC/d"
+else
+    compatsed="-es,@COMPATIBLE_SPEC@,${compatspec}-${TARGET}-,"
+    set_efi_var "TegraPlatformCompatSpec" "781e084c-a330-417c-b678-38e696380cb9" "${compatspec}-${TARGET}-" "write-once" || rc=1
+fi
+mount_dev_name="$( findmnt -n -o SOURCE --target / )"
+if [ ! -b "${mount_dev_name}" ]; then
+    boot_storage="-e/^TEGRA_BOOT_STORAGE/d"
+else
+    part_base_name="$( lsblk -sl "${mount_dev_name}" -o NAME,TYPE | grep "disk" | awk '{print $1}' )"
+    boot_storage="-es,@BOOT_STORAGE@,${part_base_name},"
+fi
+sed -e"s,@TNSPEC@,${boardspec}-${TARGET}-${BOOTDEV}," $compatsed $boot_storage \
+    "${sysconfdir}/nv_boot_control.template" > "$controlfile" || rc=1
+
+chmod 0644 "$controlfile" || rc=1
+exit $rc

@@ -1,0 +1,27 @@
+From 83dbf24399c5b25ea5667c16d1125de4a875750b Mon Sep 17 00:00:00 2001
+From: Kurt Kiefer <kurt.kiefer@arthrex.com>
+Date: Mon, 6 May 2024 11:53:44 -0700
+Subject: [PATCH] Fix builds without x11
+
+Upstream-Status: Inappropriate [OE specific]
+
+Signed-off-by: Kurt Kiefer <kurt.kiefer@arthrex.com>
+Signed-off-by: Matt Madison <matt@madison.systems>
+---
+ gst-egl/ext/eglgles/gsteglglessink.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/gst-egl/ext/eglgles/gsteglglessink.c b/gst-egl/ext/eglgles/gsteglglessink.c
+index 44eeba7..4e1139a 100644
+--- a/gst-egl/ext/eglgles/gsteglglessink.c
++++ b/gst-egl/ext/eglgles/gsteglglessink.c
+@@ -107,7 +107,9 @@
+ #include <gst/video/gstvideopool.h>
+ #include <gst/video/videooverlay.h>
+ 
++#ifdef USE_EGL_X11
+ #include <X11/Xlib.h>
++#endif
+ 
+ #include "gstegladaptation.h"
+ #include "video_platform_wrapper.h"

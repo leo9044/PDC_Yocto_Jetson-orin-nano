@@ -1,0 +1,20 @@
+[submodule "poky"]
+	path = repos/poky
+	url = https://git.yoctoproject.org/poky
+	branch = scarthgap
+[submodule "repos/meta-openembedded"]
+	path = repos/meta-openembedded
+	url = https://git.openembedded.org/meta-openembedded
+	branch = scarthgap
+[submodule "repos/meta-virtualization"]
+	path = repos/meta-virtualization
+	url = https://git.yoctoproject.org/meta-virtualization
+	branch = scarthgap
+[submodule "repos/meta-tegra"]
+	path = repos/meta-tegra
+	url = https://github.com/OE4T/meta-tegra.git
+	branch = scarthgap
+[submodule "repos/meta-tegra-community"]
+	path = repos/meta-tegra-community
+	url = https://github.com/OE4T/meta-tegra-community
+	branch = scarthgap

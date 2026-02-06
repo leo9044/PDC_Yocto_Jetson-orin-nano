@@ -1,0 +1,18 @@
+build*/
+*~
+*.pyc
+*.pyo
+
+# 빌드 디렉토리 (절대 올리지 말 것)
+build*/
+*.swp
+*.pyc
+*.pyo
+*~
+
+# 다운로드 캐시
+downloads/
+sstate-cache/
+
+# 로그 파일
+*.log

@@ -1,0 +1,30 @@
+From 526726c3c8d89250337ef17eddc4f012274629b4 Mon Sep 17 00:00:00 2001
+From: Dan Walkes <danwalkes@trellis-logic.com>
+Date: Fri, 19 Aug 2022 10:05:15 -0500
+Subject: [PATCH 3/8] tools: update GetPixel.py to Python 3
+
+Reworked from the original at [1] for Jetpack 5, as 3
+of the 4 hunks were included in the tegra-mmpai-samples 35.1
+release.
+
+1: https://github.com/OE4T/meta-tegra/commit/0050144b2973e544237e53ecee65dee85e5cc8f9#diff-9d779250de06e384fc1e77959ef1a11165c69a34de15346d3c592d78f44f2ac9
+
+Upstream-Status: Inappropriate [OE-specific]
+Signed-off-by: Dan Walkes <danwalkes@trellis-logic.com>
+---
+ tools/GetPixel.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/tools/GetPixel.py b/tools/GetPixel.py
+index da3f681..1534442 100755
+--- a/tools/GetPixel.py
++++ b/tools/GetPixel.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python2
++#!/usr/bin/env python3
+ ###############################################################################
+ #
+ # Copyright (c) 2017, NVIDIA CORPORATION. All rights reserved.
+-- 
+2.34.1
+

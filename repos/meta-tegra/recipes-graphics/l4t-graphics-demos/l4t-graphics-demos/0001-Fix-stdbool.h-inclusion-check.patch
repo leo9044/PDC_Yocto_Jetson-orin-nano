@@ -1,0 +1,25 @@
+From 1e9a7f9824c0b2f8cee6c841e51a93207a6f41fa Mon Sep 17 00:00:00 2001
+From: Ilies CHERGUI <ichergui@nvidia.com>
+Date: Fri, 17 Nov 2023 11:02:37 +0000
+Subject: [PATCH] Fix stdbool.h inclusion check
+
+Upstream-Status: Inappropriate [OE specific]
+
+Signed-off-by: Matt Madison <matt@madison.systems>
+---
+ usr/src/nvidia/graphics_demos/nvgldemo/nvgldemo_win_egldevice.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/usr/src/nvidia/graphics_demos/nvgldemo/nvgldemo_win_egldevice.h b/usr/src/nvidia/graphics_demos/nvgldemo/nvgldemo_win_egldevice.h
+index 6a345ca..d7e89a1 100644
+--- a/usr/src/nvidia/graphics_demos/nvgldemo/nvgldemo_win_egldevice.h
++++ b/usr/src/nvidia/graphics_demos/nvgldemo/nvgldemo_win_egldevice.h
+@@ -27,7 +27,7 @@
+ #include <EGL/egl.h>
+ #include <EGL/eglext.h>
+ 
+-#if defined(__INTEGRITY)
++#if defined(__INTEGRITY) || (defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L)
+ #include <stdbool.h>
+ #else
+ typedef enum {
