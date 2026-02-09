@@ -57,30 +57,68 @@ SELECTED_OPTIMIZATION:pn-edk2-firmware-tegra:remove = "-flto"
 
 ## 3. Network Configuration
 
-### Recipe Location
+### Implementation Method: bbappend (Raspberry Pi proven method)
+
+Following the successful Raspberry Pi implementation, network configuration is done through **bbappend** files that extend the base systemd and wpa-supplicant recipes.
+
+### Recipe Locations
 ```
-layers/meta-tegrademo/recipes-connectivity/network-config/
-├── network-config_1.0.bb
-└── files/
-    ├── 10-eth0.network
-    ├── 20-wlan0.network
-    └── wpa_supplicant-wlan0.conf
+layers/meta-tegrademo/
+├── recipes-core/systemd/
+│   ├── systemd_%.bbappend
+│   └── files/
+│       ├── 10-enP8p1s0.network
+│       └── 20-wlP1p1s0.network
+└── recipes-connectivity/wpa-supplicant/
+    ├── wpa-supplicant_%.bbappend
+    └── files/
+        └── wpa_supplicant-wlP1p1s0.conf
 ```
 
-### Recipe: `network-config_1.0.bb`
+### systemd bbappend: `systemd_%.bbappend`
 
-**Purpose**: Configure static IP for Ethernet and WiFi connection
+```bitbake
+FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
-**Dependencies**:
-- systemd-networkd
-- wpa-supplicant
+SRC_URI += " \
+    file://10-enP8p1s0.network \
+    file://20-wlP1p1s0.network \
+"
 
-**Files Installed**:
-- `/etc/systemd/network/10-eth0.network` - Ethernet static IP configuration
-- `/etc/systemd/network/20-wlan0.network` - WiFi DHCP configuration
-- `/etc/wpa_supplicant/wpa_supplicant-wlan0.conf` - WiFi credentials
+do_install:append() {
+    install -d ${D}${sysconfdir}/systemd/network
+    install -m 0644 ${WORKDIR}/10-enP8p1s0.network ${D}${sysconfdir}/systemd/network/
+    install -m 0644 ${WORKDIR}/20-wlP1p1s0.network ${D}${sysconfdir}/systemd/network/
+}
 
-### Ethernet Configuration: `10-eth0.network`
+FILES:${PN} += "${sysconfdir}/systemd/network/"
+```
+
+**Purpose**: Automatically installs systemd-networkd configuration files
+
+### wpa-supplicant bbappend: `wpa-supplicant_%.bbappend`
+
+```bitbake
+FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
+
+SRC_URI += "file://wpa_supplicant-wlP1p1s0.conf"
+
+SYSTEMD_AUTO_ENABLE:${PN} = "enable"
+SYSTEMD_SERVICE:${PN}:append = " wpa_supplicant@wlP1p1s0.service"
+
+do_install:append() {
+    install -d ${D}${sysconfdir}/wpa_supplicant
+    install -m 600 ${WORKDIR}/wpa_supplicant-wlP1p1s0.conf ${D}${sysconfdir}/wpa_supplicant/wpa_supplicant-wlP1p1s0.conf
+}
+
+FILES:${PN} += "${sysconfdir}/wpa_supplicant/wpa_supplicant-wlP1p1s0.conf"
+```
+
+**Purpose**: 
+- Installs WiFi credentials
+- Automatically enables `wpa_supplicant@wlP1p1s0.service` at boot
+
+### Ethernet Configuration: `10-enP8p1s0.network`
 
 ```ini
 [Match]
@@ -146,11 +184,11 @@ network={
 
 **Changes Made**:
 ```bitbake
-# SEAME Network Configuration
-CORE_IMAGE_BASE_INSTALL += "network-config"
+# SEAME: Network configuration packages
+IMAGE_INSTALL:append = " wpa-supplicant systemd openssh openssh-sftp-server"
 ```
 
-**Purpose**: Include network-config package in the demo-image-weston image
+**Purpose**: Include network and SSH packages in the demo-image-weston image
 
 **Why demo-image-weston instead of core-image-weston?**
 - `core-image-weston`: Base Yocto image with Weston compositor (upstream, unmodified)
@@ -160,7 +198,7 @@ CORE_IMAGE_BASE_INSTALL += "network-config"
 - Always build `demo-image-weston` to include SEAME customizations
 
 **Features Already Included**:
-- SSH server (openssh) - via demo-image-common.inc
+- SSH server (openssh + openssh-sftp-server) - explicitly added via IMAGE_INSTALL
 - Weston compositor
 - systemd as init system
 
@@ -201,5 +239,5 @@ tegra-demo-distro/
 
 ---
 
-**Last Updated**: February 6, 2026  
-**Status**: Phase 1 (Network Configuration) - Build pending
+**Last Updated**: February 9, 2026  
+**Status**: Phase 1 (Network Configuration) - WiFi ✅, Ethernet ✅, SSH build completed (pending flash)
