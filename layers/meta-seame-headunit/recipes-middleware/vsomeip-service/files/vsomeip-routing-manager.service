@@ -1,0 +1,15 @@
+[Unit]
+Description=vsomeip Routing Manager
+After=network.target weston.service
+Requires=weston.service
+
+[Service]
+Type=simple
+Environment="VSOMEIP_APPLICATION_NAME=routingmanagerd"
+ExecStartPre=/bin/sh -c 'touch /tmp/vsomeip.lck && chmod 666 /tmp/vsomeip.lck'
+ExecStart=/usr/bin/routingmanagerd
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=graphical.target
