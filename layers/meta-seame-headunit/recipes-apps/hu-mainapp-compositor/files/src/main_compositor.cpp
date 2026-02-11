@@ -26,11 +26,11 @@ int main(int argc, char *argv[])
 
     // Create XDG_RUNTIME_DIR if not set
     if (qgetenv("XDG_RUNTIME_DIR").isEmpty()) {
-        qputenv("XDG_RUNTIME_DIR", "/run/user/0");
+        qputenv("XDG_RUNTIME_DIR", "/run/user/1000");
     }
 
-    // This app connects to Weston's wayland-0
-    // And creates its own compositor socket wayland-1 for HU apps
+    // This app connects to Weston's wayland-1
+    // And creates its own compositor socket wayland-3 for HU apps
     // Note: The nested compositor socket name will be set by Qt Wayland Compositor
 
     // ═══════════════════════════════════════════════════════

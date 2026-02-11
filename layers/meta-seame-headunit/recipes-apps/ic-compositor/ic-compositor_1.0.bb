@@ -55,6 +55,11 @@ User=weston
 Environment="XDG_RUNTIME_DIR=/run/user/1000"
 Environment="WAYLAND_DISPLAY=wayland-1"
 Environment="QT_QPA_PLATFORM=wayland"
+Environment="QT_WAYLAND_DISABLE_WINDOWDECORATION=1"
+Environment="QSG_RENDER_LOOP=basic"
+Environment="QT_QUICK_BACKEND=software"
+Environment="QT_QPA_FONTDIR=/usr/share/fonts"
+Environment="FONTCONFIG_FILE=/etc/fonts/fonts.conf"
 ExecStart=/usr/bin/IC_Compositor
 Restart=on-failure
 RestartSec=5

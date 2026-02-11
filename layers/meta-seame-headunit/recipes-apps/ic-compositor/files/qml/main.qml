@@ -6,7 +6,7 @@ import QtWayland.Compositor 1.3
  * IC_Compositor - Nested Wayland Compositor (Industrial Kiosk Mode)
  *
  * Architecture:
- * - Nested compositor connecting to Weston (wayland-0)
+ * - Nested compositor connecting to Weston (wayland-1)
  * - Creates wayland-2 socket for IC apps
  * - Fixed layout, no window decorations (Kiosk mode)
  * - Index-based surface routing for IC apps
@@ -16,7 +16,7 @@ WaylandCompositor {
     id: compositor
 
     // Create Wayland server socket for IC apps
-    // Weston uses wayland-0, HU uses wayland-1, so we use wayland-2
+    // Weston uses wayland-1, HU uses wayland-3, so we use wayland-2
     socketName: "wayland-2"
 
     WaylandOutput {

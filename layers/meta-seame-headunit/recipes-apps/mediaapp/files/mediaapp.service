@@ -9,10 +9,17 @@ Wants=network-online.target
 Type=simple
 User=weston
 Group=weston
-Environment="WAYLAND_DISPLAY=wayland-1"
+
+# Wait for wayland-3 socket to be ready
+ExecStartPre=/bin/sh -c 'for i in $(seq 1 10); do test -S /run/user/1000/wayland-3 && break || sleep 1; done'
+Environment="WAYLAND_DISPLAY=wayland-3"
 Environment="XDG_RUNTIME_DIR=/run/user/1000"
 Environment="QT_QPA_PLATFORM=wayland"
 Environment="QT_WAYLAND_DISABLE_WINDOWDECORATION=1"
+Environment="QSG_RENDER_LOOP=basic"
+Environment="QT_QUICK_BACKEND=software"
+Environment="QT_QPA_FONTDIR=/usr/share/fonts"
+Environment="FONTCONFIG_FILE=/etc/fonts/fonts.conf"
 Environment="VSOMEIP_CONFIGURATION=/etc/vsomeip/routing_manager_ecu2.json"
 Environment="VSOMEIP_APPLICATION_NAME=MediaApp"
 Environment="COMMONAPI_CONFIG=/usr/share/commonapi/commonapi.ini"

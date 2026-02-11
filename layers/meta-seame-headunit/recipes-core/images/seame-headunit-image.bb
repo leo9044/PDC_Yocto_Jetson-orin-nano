@@ -23,6 +23,18 @@ IMAGE_INSTALL:append = " \
     qtwayland \
     qtgraphicaleffects \
     qtmultimedia \
+    qtsvg \
+    qtsvg-plugins \
+"
+
+# Fonts for Qt applications
+IMAGE_INSTALL:append = " \
+    fontconfig \
+    fontconfig-utils \
+    freetype \
+    ttf-dejavu-sans \
+    ttf-dejavu-sans-mono \
+    ttf-dejavu-serif \
 "
 
 # vsomeip & CommonAPI middleware

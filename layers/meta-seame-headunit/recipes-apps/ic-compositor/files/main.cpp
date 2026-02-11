@@ -8,7 +8,7 @@ int main(int argc, char *argv[])
     // IC_Compositor - Nested Wayland Compositor (Kiosk Mode)
     // ═══════════════════════════════════════════════════════
     // IMPORTANT: IC_Compositor runs as a NESTED Wayland compositor
-    // - Connects to Weston (wayland-0) as a client
+    // - Connects to Weston (wayland-1) as a client
     // - Creates sub-compositor socket (wayland-2) for IC apps
     // - Fixed layout, no window decorations (industrial mode)
     

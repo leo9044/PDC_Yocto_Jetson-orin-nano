@@ -6,9 +6,9 @@ import QtWayland.Compositor 1.3
  * DES Head Unit - Nested Wayland Compositor
  *
  * This is a NESTED WAYLAND COMPOSITOR
- * - Connects to Weston (wayland-0) as a client
+ * - Connects to Weston (wayland-1) as a client
  * - Shows fullscreen on HDMI output (1024x600) via Weston
- * - Creates wayland-1 socket for HU app clients
+ * - Creates wayland-3 socket for HU app clients
  * - Manages and composites HU app windows
  *
  * Architecture:
@@ -21,8 +21,8 @@ WaylandCompositor {
     id: compositor
 
     // Create Wayland server socket for HU apps
-    // Weston uses wayland-0, so we create wayland-1 for HU apps
-    socketName: "wayland-1"
+    // Weston uses wayland-1, IC uses wayland-2, so we create wayland-3 for HU apps
+    socketName: "wayland-3"
 
     // ═══════════════════════════════════════════════════════════
     // Nested Compositor Output - Shows on HDMI via Weston
@@ -224,9 +224,9 @@ WaylandCompositor {
         console.log("     - 'MediaApp' → Media page")
         console.log("     - 'AmbientApp' → Ambient page")
         console.log("")
-        console.log("🔌 Sub-compositor socket: $XDG_RUNTIME_DIR/wayland-1")
-        console.log("   Parent compositor: Weston (wayland-0)")
-        console.log("   Client apps connect via: QT_QPA_PLATFORM=wayland WAYLAND_DISPLAY=wayland-1")
+        console.log("🔌 Sub-compositor socket: $XDG_RUNTIME_DIR/wayland-3")
+        console.log("   Parent compositor: Weston (wayland-1)")
+        console.log("   Client apps connect via: QT_QPA_PLATFORM=wayland WAYLAND_DISPLAY=wayland-3")
         console.log("════════════════════════════════════════════════════════")
     }
 }

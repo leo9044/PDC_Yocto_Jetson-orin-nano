@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
 
     // Wayland settings - only set if not already configured
     if (qgetenv("XDG_RUNTIME_DIR").isEmpty()) {
-        qputenv("XDG_RUNTIME_DIR", "/run/user/0");
+        qputenv("XDG_RUNTIME_DIR", "/run/user/1000");
     }
     if (qgetenv("QT_QPA_PLATFORM").isEmpty()) {
         qputenv("QT_QPA_PLATFORM", "wayland");
@@ -38,7 +38,7 @@ int main(int argc, char *argv[])
         qputenv("QT_WAYLAND_DISABLE_WINDOWDECORATION", "1");
     }
     if (qgetenv("WAYLAND_DISPLAY").isEmpty()) {
-        qputenv("WAYLAND_DISPLAY", "wayland-0");  // Changed: Direct to Weston (IVI-Shell)
+        qputenv("WAYLAND_DISPLAY", "wayland-3");  // HU nested compositor
     }
 
     QGuiApplication app(argc, argv);

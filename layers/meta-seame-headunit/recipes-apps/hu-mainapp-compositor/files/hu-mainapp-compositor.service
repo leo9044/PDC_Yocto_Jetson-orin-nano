@@ -12,6 +12,9 @@ Environment="QT_QPA_PLATFORM=wayland"
 Environment="QT_WAYLAND_DISABLE_WINDOWDECORATION=1"
 Environment="QSG_RENDER_LOOP=basic"
 Environment="QT_QUICK_BACKEND=software"
+Environment="QT_QPA_FONTDIR=/usr/share/fonts"
+Environment="QT_LOGGING_RULES=qt.qpa.fonts=true"
+Environment="FONTCONFIG_FILE=/etc/fonts/fonts.conf"
 ExecStart=/usr/bin/HU_MainApp_Compositor
 Restart=always
 RestartSec=3
