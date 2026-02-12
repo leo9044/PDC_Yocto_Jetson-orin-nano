@@ -752,5 +752,100 @@ systemctl list-units --type=service | grep -E "gear|ambient|media|home|battery|s
 
 ---
 
-**Last Updated**: February 10, 2026  
-**Status**: Phase 2 (SEAME Applications) - Middleware ✅, Applications ✅, Custom Image ✅, Terminal Icon ✅
+## 8. Qt Text Rendering Fix (February 12, 2026)
+
+### Problem
+After successful middleware and application integration, all Qt applications ran without errors, but **text was completely invisible**:
+- ✅ UI elements rendered: rectangles, colors, borders, animations
+- ✅ Font files installed: 25 TTF fonts in `/usr/share/fonts`
+- ✅ No font errors in logs
+- ❌ **Text components completely invisible**
+
+### Root Cause Analysis
+
+**Critical Discovery**: Qt was built WITHOUT fontconfig support
+
+```bash
+# Check Qt build configuration
+bitbake -e qtbase | grep "^PACKAGECONFIG="
+# Output: PACKAGECONFIG="... freetype ... libs ..."
+# Missing: fontconfig ❌
+```
+
+**Diagnosis**:
+- Qt included `freetype` (can read font files directly)
+- Qt excluded `fontconfig` (cannot discover system fonts)
+- Result: Qt could not use system fonts in `/usr/share/fonts`
+
+**Why previous workarounds failed**:
+1. Setting `QT_QPA_FONTDIR=/usr/share/fonts` → Qt ignored without fontconfig
+2. Copying fonts to `/usr/lib/fonts` → Fallback path, but rendering pipeline broken
+3. Setting `FONTCONFIG_FILE` → Qt not linked to fontconfig library
+
+### Solution
+
+**File**: `/home/seame/leo/tegra-demo-distro/layers/meta-seame-headunit/recipes-qt/qt5/qtbase_%.bbappend`
+
+```bitbake
+# Enable fontconfig support in Qt
+PACKAGECONFIG:append = " fontconfig"
+
+# Ensure fontconfig is available at build time
+DEPENDS += "fontconfig"
+```
+
+### Build & Deploy
+
+```bash
+# Rebuild Qt with fontconfig
+bitbake qtbase -c cleansstate && bitbake qtbase
+
+# Rebuild entire image
+bitbake seame-headunit-image
+
+# Flash to device
+cd ~/jetson-flash
+./doflash.sh
+```
+
+### Verification
+
+```bash
+# Check Qt now links fontconfig
+bitbake -e qtbase | grep "^PACKAGECONFIG=" | grep fontconfig
+# Output: PACKAGECONFIG="... fontconfig freetype ..."  ✅
+
+# On device - verify fontconfig working
+fc-list | wc -l
+# Output: 25 fonts found ✅
+
+# Test application
+systemctl status gearapp
+# Output: Active, text visible ✅
+```
+
+### Result
+
+**✅ Text rendering working!**
+- P/R/N/D gear indicators visible
+- Battery percentage displayed
+- Media song titles shown
+- All text components rendered correctly
+
+### Key Lesson
+
+**"Fixing error messages ≠ Fixing root cause"**
+
+- **Wrong approach**: Workaround to eliminate errors (fallback paths, environment variables)
+- **Right approach**: Fix build configuration to enable proper system integration
+- **Critical thinking**: Question whether the "orthodox" path (fontconfig) is actually being used
+
+**Timeline**:
+- February 6-11: Network setup, middleware integration ✅
+- February 11-12 morning: 7 different font workarounds ❌
+- February 12 afternoon: Root cause analysis → fontconfig missing → **Fixed in 1 build cycle** ✅
+
+---
+
+**Last Updated**: February 12, 2026  
+**Status**: Phase 2 COMPLETE - Middleware ✅, Applications ✅, Custom Image ✅, Terminal Icon ✅, **Text Rendering ✅**

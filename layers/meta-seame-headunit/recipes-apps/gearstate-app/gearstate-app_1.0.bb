@@ -67,6 +67,7 @@ do_install:append() {
 Description=GearState App - IC Gear State Display
 After=ic-compositor.service
 Requires=ic-compositor.service
+Before=speedometer-app.service batterymeter-app.service
 
 [Service]
 Type=simple

@@ -65,8 +65,9 @@ do_install:append() {
     cat > ${D}${systemd_system_unitdir}/speedometer-app.service << 'EOF'
 [Unit]
 Description=Speedometer App - IC Speed Display
-After=ic-compositor.service
+After=ic-compositor.service gearstate-app.service
 Requires=ic-compositor.service
+Before=batterymeter-app.service
 
 [Service]
 Type=simple

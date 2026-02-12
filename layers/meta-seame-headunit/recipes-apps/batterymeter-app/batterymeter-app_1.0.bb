@@ -64,7 +64,7 @@ do_install:append() {
     cat > ${D}${systemd_system_unitdir}/batterymeter-app.service << 'EOF'
 [Unit]
 Description=BatteryMeter App - IC Battery Status Display
-After=ic-compositor.service
+After=ic-compositor.service gearstate-app.service speedometer-app.service
 Requires=ic-compositor.service
 
 [Service]

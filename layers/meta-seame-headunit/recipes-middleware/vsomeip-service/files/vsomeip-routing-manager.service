@@ -6,7 +6,9 @@ Requires=weston.service
 [Service]
 Type=simple
 Environment="VSOMEIP_APPLICATION_NAME=routingmanagerd"
+Environment="VSOMEIP_CONFIGURATION=/etc/vsomeip/vsomeip-routing-manager.json"
 ExecStartPre=/bin/sh -c 'touch /tmp/vsomeip.lck && chmod 666 /tmp/vsomeip.lck'
+ExecStartPre=/bin/sh -c 'ip route show | grep -q 224.0.0.0 || ip route add 224.0.0.0/4 dev enP8p1s0'
 ExecStart=/usr/bin/routingmanagerd
 Restart=on-failure
 RestartSec=5
