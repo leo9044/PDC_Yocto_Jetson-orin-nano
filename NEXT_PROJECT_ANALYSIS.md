@@ -890,30 +890,55 @@ RPi에서 MCU 플래싱:
 
 ### 5.1 디스플레이 고민
 
-**현재 구조의 복잡성**:
+**현재 구조 (3-layer compositor)**:
 ```
 Weston (wayland-1)  ← 소켓 번호 주의: wayland-0이 아님
   ├── IC_Compositor (wayland-2)  → IC 앱들 (BatteryMeter, Speedometer, GearState)
   └── HU_MainApp_Compositor (wayland-3) → HU 앱들 (GearApp, MediaApp, AmbientApp, HomeScreen)
 ```
 
-**컨테이너 격리 관점에서의 디스플레이 단순화 검토**:
+**구조 비교 검토**:
 
-| 구조 | 장점 | 단점 |
-|------|------|------|
-| 현재 3-layer compositor | 완전 분리 | 컨테이너화 복잡 |
-| 단순화: Weston만 사용, 앱 직접 연결 | 컨테이너화 용이 | HU/IC 분리 약해짐 |
-| DRM/KMS 직접 제어 | 최고 성능 | 학습 곡선 매우 높음 |
+| 구조 | OTA 산업 유사도 | 디버깅 복잡도 | 권장 |
+|------|----------------|--------------|------|
+| 현재 3-layer compositor | ✅ 높음 (하이퍼바이저 VM 분리 모방) | ❌ 높음 (소켓 3개, 서비스 9개) | 정적 데모용 |
+| **단일 compositor + 단일 디스플레이** | ✅ 충분 | ✅ 낮음 | **권장** |
+| DRM/KMS 직접 제어 | - | ❌ 매우 높음 | 배제 |
 
-**결론**: OTA/컨테이너 실험에 집중하려면 **디스플레이 스택 단순화가 유리**.
-그러나 기존 작업을 버리는 건 비효율적이므로,
-**컨테이너 내에서 기존 Wayland socket 공유 방식으로 유지** 권장.
+**🆕 4차 검토 결론: 단일 compositor 구조로 전환 권장**
+
+**근거**:
+1. **프로젝트 목적**: 핵심 목표는 컨테이너 격리 + OTA 구현. 디스플레이 스택은 결과를 보여주는 수단이지 목적이 아님
+2. **디버깅 복잡도**: 컨테이너/OTA 실험 중 문제 발생 시, 현재 구조는 3개 compositor + 7개 앱 + 컨테이너 설정을 동시에 추적해야 함
+3. **OTA 계층 분리**: compositor가 호스트(rootfs)에 있어도 문제없음
+   - **앱 OTA**: IC/HU 도메인 컨테이너 이미지 단위로 독립 업데이트
+   - **OS OTA**: rootfs 전체(compositor 포함)를 A/B로 업데이트
+   - 단일 compositor도 이 두 계층을 동일하게 지원함
+4. **산업 구조**: 실제 IVI도 compositor는 OS 이미지의 일부, 앱만 도메인별 OTA 대상
+
+**전환 후 목표 구조**:
+```
+Weston (wayland-1)  ← 그대로 유지
+  └── 단일 Qt Compositor (wayland-1 클라이언트)
+        ├── IC 영역: BatteryMeter, Speedometer, GearState  (wayland-1 직접 연결)
+        └── HU 영역: GearApp, MediaApp, AmbientApp, HomeScreen  (wayland-1 직접 연결)
+
+컨테이너 구조:
+  IC 컨테이너: IC앱 3개  (-v /run/user/1000/wayland-1:...)
+  HU 컨테이너: HU앱 4개  (-v /run/user/1000/wayland-1:...)
+  compositor: 호스트 또는 별도 컨테이너 (OS OTA 대상)
+```
+
+**전환 작업 범위**:
+- IC compositor + HU compositor QML → 하나로 통합 (영역 분할 레이아웃)
+- 7개 앱 서비스 파일: `WAYLAND_DISPLAY=wayland-1`로 통일
+- `ic-compositor`, `hu-mainapp-compositor` bb 파일/서비스 파일 제거
+- Weston 및 vsomeip는 변경 없음
 
 **디스플레이 교체 시 어댑터 문제**:
-- 현재 MST Hub (DisplayPort Multi-Stream) 사용
-- 다른 디스플레이(HDMI)로 교체 시 `DP to HDMI` 어댑터 필요
+- 단일 디스플레이 사용으로 MST Hub 불필요
+- HDMI 사용 시 `DP to HDMI` 어댑터 필요
 - 해상도/타이밍 설정은 Weston의 `weston.ini`에서 조정 가능
-- 단, `weston.ini`는 현재 Yocto 이미지에 하드코딩되어 있어 OTA 연계 고려 필요
 
 ### 5.2 네트워크 보안 (OTA 관련)
 
