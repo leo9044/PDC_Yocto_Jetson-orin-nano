@@ -11,8 +11,8 @@ User=weston
 Group=weston
 
 # Wait for wayland-3 socket to be ready
-ExecStartPre=/bin/sh -c 'for i in $(seq 1 10); do test -S /run/user/1000/wayland-3 && break || sleep 1; done'
-Environment="WAYLAND_DISPLAY=wayland-3"
+ExecStartPre=/bin/sh -c 'for i in $(seq 1 10); do test -S /run/user/1000/wayland-1 && break || sleep 1; done'
+Environment="WAYLAND_DISPLAY=wayland-1"
 Environment="XDG_RUNTIME_DIR=/run/user/1000"
 Environment="QT_QPA_PLATFORM=wayland"
 Environment="QT_WAYLAND_DISABLE_WINDOWDECORATION=1"

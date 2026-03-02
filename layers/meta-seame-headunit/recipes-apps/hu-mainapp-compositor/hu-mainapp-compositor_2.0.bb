@@ -1,5 +1,5 @@
-SUMMARY = "HU Main App Wayland Compositor"
-DESCRIPTION = "Nested Wayland Compositor for Head Unit applications (Kiosk Mode)"
+SUMMARY = "Unified Wayland Compositor (IC + HU, single display)"
+DESCRIPTION = "Single nested Wayland compositor managing both IC and HU app windows on one display"
 LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda2f7b4f302"
 

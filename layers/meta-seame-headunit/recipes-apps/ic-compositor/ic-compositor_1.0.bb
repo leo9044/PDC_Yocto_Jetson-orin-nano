@@ -70,7 +70,7 @@ EOF
 }
 
 SYSTEMD_SERVICE:${PN} = "ic-compositor.service"
-SYSTEMD_AUTO_ENABLE = "enable"
+SYSTEMD_AUTO_ENABLE = "disable"  # Disabled: unified compositor handles IC layout
 
 FILES:${PN} += " \
     ${bindir}/IC_Compositor \

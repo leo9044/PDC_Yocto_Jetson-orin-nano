@@ -65,14 +65,13 @@ do_install:append() {
     cat > ${D}${systemd_system_unitdir}/speedometer-app.service << 'EOF'
 [Unit]
 Description=Speedometer App - IC Speed Display
-After=ic-compositor.service gearstate-app.service
-Requires=ic-compositor.service
-Before=batterymeter-app.service
+After=hu-mainapp-compositor.service vsomeip-routing-manager.service
+Requires=hu-mainapp-compositor.service
 
 [Service]
 Type=simple
 Environment="XDG_RUNTIME_DIR=/run/user/1000"
-Environment="WAYLAND_DISPLAY=wayland-2"
+Environment="WAYLAND_DISPLAY=wayland-1"
 Environment="QT_QPA_PLATFORM=wayland"
 Environment="QT_WAYLAND_DISABLE_WINDOWDECORATION=1"
 Environment="QSG_RENDER_LOOP=basic"

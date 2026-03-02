@@ -11,8 +11,8 @@
 1. [현재 시스템 기준점 (Baseline)](#1-현재-시스템-기준점)
 2. [컨테이너 격리](#2-컨테이너-격리)
 3. [OTA 업데이트](#3-ota-업데이트)
-4. [기타 고려 사항](#5-기타-고려-사항)
-5. [최종 권고 및 우선순위](#7-최종-권고-및-우선순위)
+4. [기타 고려 사항](#4-기타-고려-사항)
+5. [최종 권고 및 우선순위](#5-최종-권고-및-우선순위)
 
 ---
 
@@ -26,7 +26,7 @@
   ├── GPU: 1024-core NVIDIA Ampere
   ├── RAM: 8GB LPDDR5
   ├── Storage: eMMC (bootloader/kernel) + microSD (rootfs)  ← 중요
-  ├── Display: DP-2 (HU) + DP-3 (IC) via MST Hub
+  ├── Display: DP → DP-to-MiniDP → MST Hub → HDMI → MiniHDMI → Elecrow 13.3" 4K (단일)
   ├── Network: enP8p1s0 (192.168.1.101)
   └── OS: Custom Yocto Linux (Scarthgap, L4T R36.4.4)
 
@@ -819,57 +819,56 @@ class OTAGateway:
 
 ## 4. 기타 고려 사항
 
-### 4.1 디스플레이 고민
+### 4.1 디스플레이 단일화 ✅ 완료
 
-**현재 구조 (3-layer compositor)**:
+#### 최종 확정 하드웨어 구성
+
 ```
-Weston (wayland-1)  ← 소켓 번호 주의: wayland-0이 아님
-  ├── IC_Compositor (wayland-2)  → IC 앱들 (BatteryMeter, Speedometer, GearState)
-  └── HU_MainApp_Compositor (wayland-3) → HU 앱들 (GearApp, MediaApp, AmbientApp, HomeScreen)
+Jetson DP → DP-to-MiniDP 어댑터 → WJESOG MST 허브 (HDMI 1포트만 사용)
+         → Snowkids HDMI-to-MiniHDMI 케이블 → Elecrow 13.3" 4K (Mini HDMI 입력)
+
+전원:
+  MST 허브   : Micro USB → 외부 5V 충전기 (필수)
+  Elecrow 모니터: USB-C → 전용 전원 어댑터 (6W, 필수)
 ```
 
-**구조 비교 검토**:
+> **ASUS ZenScreen MB166C 탈락 이유**: USB-C DP Alt Mode 방식으로 6W 전원이 필요한데,  
+> Jetson DP 포트에서 해당 전력 공급 불가. Elecrow는 MiniHDMI 입력 + 별도 USB-C 전원으로 분리되어 문제 없음.
+
+#### 이전 구조 (3-layer compositor)
+
+```
+Weston (wayland-1)
+  ├── IC_Compositor (wayland-2)  → IC 앱들 (BatteryMeter, Speedometer, GearState)  ← 디스플레이 1
+  └── HU_MainApp_Compositor (wayland-3) → HU 앱들 (GearApp, MediaApp, AmbientApp, HomeScreen)  ← 디스플레이 2
+```
 
 | 구조 | OTA 산업 유사도 | 디버깅 복잡도 | 권장 |
 |------|----------------|--------------|------|
-| 현재 3-layer compositor | ✅ 높음 (하이퍼바이저 VM 분리 모방) | ❌ 높음 (소켓 3개, 서비스 9개) | 정적 데모용 |
-| **단일 compositor + 단일 디스플레이** | ✅ 충분 | ✅ 낮음 | **권장** |
-| DRM/KMS 직접 제어 | - | ❌ 매우 높음 | 배제 |
+| 이전 3-layer compositor | ✅ 높음 | ❌ 높음 (소켓 3개, 서비스 9개) | 듀얼 디스플레이 전용 |
+| **단일 compositor + 단일 디스플레이** | ✅ 충분 | ✅ 낮음 | **✅ 현재 구조** |
 
-**🆕 4차 검토 결론: 단일 compositor 구조로 전환 권장**
+#### 현재 구조 (단일 compositor) ✅
 
-**근거**:
-1. **프로젝트 목적**: 핵심 목표는 컨테이너 격리 + OTA 구현. 디스플레이 스택은 결과를 보여주는 수단이지 목적이 아님
-2. **디버깅 복잡도**: 컨테이너/OTA 실험 중 문제 발생 시, 현재 구조는 3개 compositor + 7개 앱 + 컨테이너 설정을 동시에 추적해야 함
-3. **OTA 계층 분리**: compositor가 호스트(rootfs)에 있어도 문제없음
-   - **앱 OTA**: IC/HU 도메인 컨테이너 이미지 단위로 독립 업데이트
-   - **OS OTA**: rootfs 전체(compositor 포함)를 A/B로 업데이트
-   - 단일 compositor도 이 두 계층을 동일하게 지원함
-4. **산업 구조**: 실제 IVI도 compositor는 OS 이미지의 일부, 앱만 도메인별 OTA 대상
-
-**전환 후 목표 구조**:
 ```
-Weston (wayland-1)  ← 그대로 유지
-  └── 단일 Qt Compositor (wayland-1 클라이언트)
-        ├── IC 영역: BatteryMeter, Speedometer, GearState  (wayland-1 직접 연결)
-        └── HU 영역: GearApp, MediaApp, AmbientApp, HomeScreen  (wayland-1 직접 연결)
+Weston (wayland-1)
+  └── HU_MainApp_Compositor (wayland-1 클라이언트, socketName: "wayland-1" 제거 → 앱들 직접 연결)
+        ┌─────────────────────────────────────────────────────┐
+        │  IC 영역 (좌측 고정)       │  HU 영역 (우측 메인)    │
+        │  GearState  Speedometer   │  GearApp (좌측 패널)    │
+        │  BatteryMeter             │  HomeScreen / Media /   │
+        │  [1024x600 분할]          │  Ambient (페이지 전환)   │
+        └─────────────────────────────────────────────────────┘
 
-컨테이너 구조:
-  IC 컨테이너: IC앱 3개  (-v /run/user/1000/wayland-1:...)
-  HU 컨테이너: HU앱 4개  (-v /run/user/1000/wayland-1:...)
-  compositor: 호스트 또는 별도 컨테이너 (OS OTA 대상)
+모든 앱: WAYLAND_DISPLAY=wayland-1 (단일 소켓)
 ```
 
-**전환 작업 범위**:
-- IC compositor + HU compositor QML → 하나로 통합 (영역 분할 레이아웃)
-- 7개 앱 서비스 파일: `WAYLAND_DISPLAY=wayland-1`로 통일
-- `ic-compositor`, `hu-mainapp-compositor` bb 파일/서비스 파일 제거
-- Weston 및 vsomeip는 변경 없음
-
-**디스플레이 교체 시 어댑터 문제**:
-- 단일 디스플레이 사용으로 MST Hub 불필요
-- HDMI 사용 시 `DP to HDMI` 어댑터 필요
-- 해상도/타이밍 설정은 Weston의 `weston.ini`에서 조정 가능
+**전환 완료 내용**:
+- `HU_MainApp_Compositor`: IC 앱(GearState, Speedometer, BatteryMeter) 레이아웃 흡수, `socketName` 제거 → 앱들이 `wayland-1`로 직접 연결
+- IC 앱 3개 서비스 파일: `wayland-2` → `wayland-1`, `Requires=ic-compositor` 제거
+- HU 앱 4개 서비스 파일: `wayland-3` → `wayland-1`, `Requires=hu-mainapp-compositor` 유지
+- `ic-compositor`: `SYSTEMD_AUTO_ENABLE = "disable"` (패키지는 유지, 서비스만 비활성화)
+- `hu-mainapp-compositor`: 버전 `2.0` → `3.0` (통합 compositor)
 
 ### 4.2 네트워크 보안 (OTA 관련)
 
@@ -975,3 +974,4 @@ Phase 5 (로우레벨, 여유 시 진행):
 | 1.0 | 2026-02-26 | 최초 작성 (시스템 분석 기반) |
 | 1.1 | 2026-02-26 | 2차 정밀 검토 반영: Wayland 소켓 번호 수정 (wayland-0→1), HU/IC 앱 실제 소켓 번호 확인, 컨테이너 User/UID 제약 추가, pigpio root 요건 추가, IC앱 인라인 서비스 정의 이슈 추가, enP8p1s0 하드코딩 이슈 추가 |
 | 1.2 | 2026-02-26 | 3차 정밀 검토 반영: **OTA 1순위를 RAUC→SWUpdate로 변경** (meta-tegrademo에 이미 통합 레이어 존재), IC앱이 Mock 데이터 사용(unicast:127.0.0.1, routing:VehicleControlMock) 발견, 모든 앱 QT_QUICK_BACKEND=software(GPU 불필요) 발견, vsomeip 라우팅 매니저 패키지 중복 충돌 이슈 추가, vehiclecontrolmock EXTERNALSRC 하드코딩 경로 경고 추가, main_compositor.cpp 오래된 주석(wayland-0) 경고 추가 |
+| 1.3 | 2026-03-02 | 디스플레이 단일화 완료: ASUS ZenScreen 탈락(6W DP 전력 공급 불가) → Elecrow 13.3" 4K + MiniHDMI 확정. 3-layer compositor → 단일 compositor 전환 완료. IC compositor 비활성화, 모든 앱 WAYLAND_DISPLAY=wayland-1 통일. |

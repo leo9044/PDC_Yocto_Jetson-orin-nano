@@ -1,5 +1,5 @@
 [Unit]
-Description=HU Main App Wayland Compositor
+Description=Unified Wayland Compositor (IC + HU)
 After=weston.service vsomeip-routing-manager.service
 Requires=weston.service vsomeip-routing-manager.service
 

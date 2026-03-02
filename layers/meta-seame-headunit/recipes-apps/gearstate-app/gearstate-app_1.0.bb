@@ -65,14 +65,13 @@ do_install:append() {
     cat > ${D}${systemd_system_unitdir}/gearstate-app.service << 'EOF'
 [Unit]
 Description=GearState App - IC Gear State Display
-After=ic-compositor.service
-Requires=ic-compositor.service
-Before=speedometer-app.service batterymeter-app.service
+After=hu-mainapp-compositor.service vsomeip-routing-manager.service
+Requires=hu-mainapp-compositor.service
 
 [Service]
 Type=simple
 Environment="XDG_RUNTIME_DIR=/run/user/1000"
-Environment="WAYLAND_DISPLAY=wayland-2"
+Environment="WAYLAND_DISPLAY=wayland-1"
 Environment="QT_QPA_PLATFORM=wayland"
 Environment="QT_WAYLAND_DISABLE_WINDOWDECORATION=1"
 Environment="QSG_RENDER_LOOP=basic"
