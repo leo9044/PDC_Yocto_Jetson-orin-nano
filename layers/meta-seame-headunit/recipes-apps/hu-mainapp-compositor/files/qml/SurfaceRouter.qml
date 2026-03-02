@@ -45,24 +45,24 @@ QtObject {
         return homeScreenAppContainer
     }
 
-    // Returns suggested window size based on app
+    // Returns suggested window size based on app (portrait 600x1024)
     function getSuggestedSize(identifier) {
         var id = identifier.toLowerCase()
 
-        // IC apps: fill their 280x200 slot
+        // IC apps: each fills 1/3 of 600px wide, 340px tall
         if (id.includes("gearstate") || id.includes("gear state"))
-            return Qt.size(280, 200)
+            return Qt.size(200, 340)
         if (id.includes("speedometer"))
-            return Qt.size(280, 200)
+            return Qt.size(200, 340)
         if (id.includes("battery") || id.includes("batterymeter"))
-            return Qt.size(280, 200)
+            return Qt.size(200, 340)
 
-        // HU GearApp: narrow left panel
+        // HU GearApp: narrow left panel (130px wide, HU area height 604px)
         if (identifier === "GearApp" || (id.includes("gear") && !id.includes("state")))
-            return Qt.size(130, 520)
+            return Qt.size(130, 604)
 
-        // HU main area apps
-        return Qt.size(614, 520)
+        // HU main area apps: remaining width (470px), content height (604-80=524px)
+        return Qt.size(470, 524)
     }
 
     // Assigns chrome to container, clearing duplicates

@@ -61,7 +61,7 @@ int main(int argc, char *argv[])
     app.setDesktopFileName("HeadUnitApp");  // Critical for Wayland app_id
 
     qDebug() << "═══════════════════════════════════════════════════════";
-    qDebug() << "HU_MainApp - Nested Wayland Compositor (Kiosk Shell)";
+    qDebug() << "HU_MainApp - Unified Compositor (Portrait 600x1024)";
     qDebug() << "App ID: HeadUnitApp → HDMI-A-1 (1024x600)";
     qDebug() << "═══════════════════════════════════════════════════════";
     qDebug() << "Display Platform:" << app.platformName();
