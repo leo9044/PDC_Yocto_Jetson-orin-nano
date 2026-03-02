@@ -20,7 +20,9 @@ import QtWayland.Compositor 1.3
 WaylandCompositor {
     id: compositor
 
-    // NO socketName — all apps connect directly to wayland-1 (Weston)
+    // Sub-compositor socket: apps connect to wayland-2 (NOT wayland-1/Weston)
+    // This allows compositor to control window size and placement
+    socketName: "wayland-2"
 
     // ═══════════════════════════════════════════════════════════
     // Output — portrait window shown on display via Weston
@@ -134,7 +136,8 @@ WaylandCompositor {
         console.log("🚀 DES Unified Compositor — TEST mode (DP landscape 1024x600)")
         console.log("   IC  left 280px : GearState / Speedometer / BatteryMeter")
         console.log("   HU  right      : GearApp(130px) | Main(614px) | NavBar(80px)")
-        console.log("   All apps → wayland-1 (Weston socket)")
+        console.log("   Compositor socket : wayland-2  (apps connect here)")
+        console.log("   Parent Weston     : wayland-1")
         console.log("   [TARGET: Elecrow portrait 600x1024 — switch when cable arrives]")
         console.log("════════════════════════════════════════════════════════")
     }

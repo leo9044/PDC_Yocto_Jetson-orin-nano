@@ -70,7 +70,7 @@ Requires=hu-mainapp-compositor.service
 [Service]
 Type=simple
 Environment="XDG_RUNTIME_DIR=/run/user/1000"
-Environment="WAYLAND_DISPLAY=wayland-1"
+Environment="WAYLAND_DISPLAY=wayland-2"
 Environment="QT_QPA_PLATFORM=wayland"
 Environment="QT_WAYLAND_DISABLE_WINDOWDECORATION=1"
 Environment="QSG_RENDER_LOOP=basic"
@@ -78,6 +78,7 @@ Environment="QT_QUICK_BACKEND=software"
 Environment="QT_QPA_FONTDIR=/usr/share/fonts"
 Environment="FONTCONFIG_FILE=/etc/fonts/fonts.conf"
 Environment="VSOMEIP_CONFIGURATION=/etc/commonapi/vsomeip_batterymeter.json"
+ExecStartPre=/bin/sh -c 'for i in $(seq 1 20); do test -S /run/user/1000/wayland-2 && break || sleep 1; done'
 ExecStart=/usr/bin/BatteryMeter_app
 Restart=on-failure
 RestartSec=5
