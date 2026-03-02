@@ -34,12 +34,12 @@ WaylandCompositor {
 
         window: Window {
             id: mainWindow
-            // ---- TEST (DP landscape) ----
-            width: 1024
-            height: 600
-            // ---- TARGET (Elecrow portrait) — uncomment when Elecrow arrives
-            // width: 600
-            // height: 1024
+            // ---- TEST (DP landscape) — uncomment when testing with DP
+            // width: 1024
+            // height: 600
+            // ---- TARGET (Elecrow portrait) ----
+            width: 600
+            height: 1024
             visible: true
             title: "UnifiedCompositor"
             color: "#000000"

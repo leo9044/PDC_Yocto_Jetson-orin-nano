@@ -56,7 +56,7 @@ Item {
     //   Column { gearState / speedometer / battery }
     // ═══════════════════════════════════════════════════════
 
-    // ---- TEST (landscape) ----
+    /* ---- TEST (landscape) — uncomment when testing with DP
     Rectangle {
         id: icArea
         anchors.left: parent.left
@@ -91,8 +91,9 @@ Item {
             }
         }
     }
+    ---- end TEST landscape IC area ---- */
 
-    /* ---- TARGET (portrait) — uncomment when Elecrow arrives ----
+    // ---- TARGET (portrait) ----
     Rectangle {
         id: icArea
         anchors.top: parent.top
@@ -126,10 +127,9 @@ Item {
             }
         }
     }
-    ---- end TARGET portrait IC area ---- */
 
     // Divider between IC and HU
-    // ---- TEST (landscape): vertical ----
+    /* ---- TEST (landscape): vertical divider — uncomment when testing with DP
     Rectangle {
         id: divider
         anchors.left: icArea.right
@@ -138,8 +138,9 @@ Item {
         width: 1
         color: "#333333"
     }
+    ---- end TEST ---- */
 
-    /* ---- TARGET (portrait): horizontal divider — uncomment when Elecrow arrives
+    // ---- TARGET (portrait): horizontal divider ----
     Rectangle {
         id: divider
         anchors.top: icArea.bottom
@@ -148,7 +149,6 @@ Item {
         height: 1
         color: "#333333"
     }
-    ---- end TARGET portrait divider ---- */
 
 
     // ═══════════════════════════════════════════════════════
@@ -159,15 +159,15 @@ Item {
 
     Rectangle {
         id: huGearPanel
-        // ---- TEST (landscape) ----
-        anchors.left: divider.right
-        anchors.top: parent.top
-        anchors.bottom: huNavigationBar.top
-        /* ---- TARGET (portrait) — uncomment when Elecrow arrives
+        // ---- TARGET (portrait) ----
         anchors.top: divider.bottom
         anchors.left: parent.left
         anchors.bottom: huNavigationBar.top
-        ---- end TARGET ---- */
+        /* ---- TEST (landscape) — uncomment when testing with DP
+        anchors.left: divider.right
+        anchors.top: parent.top
+        anchors.bottom: huNavigationBar.top
+        ---- end TEST ---- */
         width: 130
         color: "#1a1a1a"
 
@@ -186,11 +186,11 @@ Item {
         objectName: "mainContentArea"
         anchors.left: huGearPanel.right
         anchors.right: parent.right
-        // ---- TEST (landscape) ----
-        anchors.top: parent.top
-        /* ---- TARGET (portrait) — uncomment when Elecrow arrives
+        // ---- TARGET (portrait) ----
         anchors.top: divider.bottom
-        ---- end TARGET ---- */
+        /* ---- TEST (landscape) — uncomment when testing with DP
+        anchors.top: parent.top
+        ---- end TEST ---- */
         anchors.bottom: huNavigationBar.top
         anchors.margins: 8
 
@@ -235,7 +235,7 @@ Item {
     Rectangle {
         id: huNavigationBar
         anchors.bottom: parent.bottom
-        anchors.left: huGearPanel.left
+        anchors.left: parent.left
         anchors.right: parent.right
         height: 80
         color: "#2d2d2d"

@@ -34,23 +34,23 @@ QtObject {
 
         // IC apps — TEST: 280×600 / TARGET: 200×340
         if (id.includes("gearstate") || id.includes("gear state"))
-            return Qt.size(280, 600)   // TEST landscape
-            // return Qt.size(200, 340) // TARGET portrait — uncomment when Elecrow arrives
+            // return Qt.size(280, 600)   // TEST landscape
+            return Qt.size(200, 340)    // TARGET portrait
         if (id.includes("speedometer"))
-            return Qt.size(280, 600)   // TEST landscape
-            // return Qt.size(200, 340) // TARGET portrait
+            // return Qt.size(280, 600)   // TEST landscape
+            return Qt.size(200, 340)    // TARGET portrait
         if (id.includes("battery") || id.includes("batterymeter"))
-            return Qt.size(280, 600)   // TEST landscape
-            // return Qt.size(200, 340) // TARGET portrait
+            // return Qt.size(280, 600)   // TEST landscape
+            return Qt.size(200, 340)    // TARGET portrait
 
         // HU GearApp — TEST: 130×520 / TARGET: 130×604
         if (identifier === "GearApp" || (id.includes("gear") && !id.includes("state")))
-            return Qt.size(130, 520)   // TEST landscape
-            // return Qt.size(130, 604) // TARGET portrait — uncomment when Elecrow arrives
+            // return Qt.size(130, 520)   // TEST landscape
+            return Qt.size(130, 604)    // TARGET portrait
 
         // HU main area — TEST: 614×520 / TARGET: 470×524
-        return Qt.size(614, 520)       // TEST landscape
-        // return Qt.size(470, 524)    // TARGET portrait — uncomment when Elecrow arrives
+        // return Qt.size(614, 520)       // TEST landscape
+        return Qt.size(470, 524)        // TARGET portrait
     }
 
     // ── Returns target container without routing ─────────────────
