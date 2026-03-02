@@ -3,16 +3,18 @@ import QtQuick.Window 2.12
 import QtWayland.Compositor 1.3
 
 /*
- * DES Unified Compositor - Portrait Single Display
+ * DES Unified Compositor — Single Display
  *
  * NESTED WAYLAND COMPOSITOR
  * - Connects to Weston (wayland-1) as a client
- * - Display: PORTRAIT 600 x 1024
  * - No sub-socket: all apps connect directly to wayland-1
  *
- * Layout (portrait):
- *   Top    340px : IC area  (GearState | Speedometer | BatteryMeter)
- *   Bottom 684px : HU area  (GearApp panel + Home/Media/Ambient pages)
+ * ── TEST  (DP display, landscape) : window 1024 × 600 ──────────
+ *   IC left panel 280px | GearApp 130px | Main 614px
+ *
+ * ── TARGET (Elecrow 13.3" portrait, MiniHDMI) : window 600 × 1024
+ *   IC top 340px | HU bottom 684px (GearApp 130px + Main 470px)
+ *   weston.ini [output] transform=90 required
  */
 
 WaylandCompositor {
@@ -30,8 +32,12 @@ WaylandCompositor {
 
         window: Window {
             id: mainWindow
-            width: 600
-            height: 1024
+            // ---- TEST (DP landscape) ----
+            width: 1024
+            height: 600
+            // ---- TARGET (Elecrow portrait) — uncomment when Elecrow arrives
+            // width: 600
+            // height: 1024
             visible: true
             title: "UnifiedCompositor"
             color: "#000000"
@@ -125,10 +131,11 @@ WaylandCompositor {
     // ═══════════════════════════════════════════════════════════
     Component.onCompleted: {
         console.log("════════════════════════════════════════════════════════")
-        console.log("🚀 DES Unified Compositor — Portrait 600x1024")
-        console.log("   Top  340px : IC  (GearState | Speedometer | BatteryMeter)")
-        console.log("   Bot  684px : HU  (GearApp | Home / Media / Ambient)")
+        console.log("🚀 DES Unified Compositor — TEST mode (DP landscape 1024x600)")
+        console.log("   IC  left 280px : GearState / Speedometer / BatteryMeter")
+        console.log("   HU  right      : GearApp(130px) | Main(614px) | NavBar(80px)")
         console.log("   All apps → wayland-1 (Weston socket)")
+        console.log("   [TARGET: Elecrow portrait 600x1024 — switch when cable arrives]")
         console.log("════════════════════════════════════════════════════════")
     }
 }
