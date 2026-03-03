@@ -819,7 +819,7 @@ class OTAGateway:
 
 ## 4. 기타 고려 사항
 
-### 4.1 디스플레이 단일화 ✅ 완료
+### 4.1 디스플레이 단일화 🔄 진행 중
 
 #### 최종 확정 하드웨어 구성
 
@@ -835,40 +835,96 @@ Jetson DP → DP-to-MiniDP 어댑터 → WJESOG MST 허브 (HDMI 1포트만 사�
 > **ASUS ZenScreen MB166C 탈락 이유**: USB-C DP Alt Mode 방식으로 6W 전원이 필요한데,  
 > Jetson DP 포트에서 해당 전력 공급 불가. Elecrow는 MiniHDMI 입력 + 별도 USB-C 전원으로 분리되어 문제 없음.
 
-#### 이전 구조 (3-layer compositor)
+---
+
+#### 현재 구조 (단일 compositor, wayland-2 소켓) ✅
 
 ```
-Weston (wayland-1)
-  ├── IC_Compositor (wayland-2)  → IC 앱들 (BatteryMeter, Speedometer, GearState)  ← 디스플레이 1
-  └── HU_MainApp_Compositor (wayland-3) → HU 앱들 (GearApp, MediaApp, AmbientApp, HomeScreen)  ← 디스플레이 2
+Weston (wayland-1 소켓)
+  └── HU_MainApp_Compositor  ← Weston에 클라이언트로 연결 (WAYLAND_DISPLAY=wayland-1)
+        socketName: "wayland-2"  ← 앱들이 연결하는 별도 소켓
+          ├── IC 앱 3개 (WAYLAND_DISPLAY=wayland-2)
+          └── HU 앱 4개 (WAYLAND_DISPLAY=wayland-2)
 ```
 
-| 구조 | OTA 산업 유사도 | 디버깅 복잡도 | 권장 |
-|------|----------------|--------------|------|
-| 이전 3-layer compositor | ✅ 높음 | ❌ 높음 (소켓 3개, 서비스 9개) | 듀얼 디스플레이 전용 |
-| **단일 compositor + 단일 디스플레이** | ✅ 충분 | ✅ 낮음 | **✅ 현재 구조** |
-
-#### 현재 구조 (단일 compositor) ✅
+**CompositorLayout 현재 상태 (TEST: DP landscape 1024×600)**
 
 ```
-Weston (wayland-1)
-  └── HU_MainApp_Compositor (wayland-1 클라이언트, socketName: "wayland-1" 제거 → 앱들 직접 연결)
-        ┌─────────────────────────────────────────────────────┐
-        │  IC 영역 (좌측 고정)       │  HU 영역 (우측 메인)    │
-        │  GearState  Speedometer   │  GearApp (좌측 패널)    │
-        │  BatteryMeter             │  HomeScreen / Media /   │
-        │  [1024x600 분할]          │  Ambient (페이지 전환)   │
-        └─────────────────────────────────────────────────────┘
-
-모든 앱: WAYLAND_DISPLAY=wayland-1 (단일 소켓)
+┌──────────────────────────────────────────────────────────────┐  ← 1024px
+│  IC 영역(280px)  │ GearApp(130px) │   Main Area(614px)      │
+│ ┌──────────────┐ │                │  ┌──────────────────┐   │
+│ │ GearState    │ │   GearApp      │  │ HomeScreen       │   │  600px
+│ │ (280×200)    │ │   (130×520)    │  │ / Media          │   │
+│ ├──────────────┤ │                │  │ / Ambient        │   │
+│ │ Speedometer  │ │                │  │ (614×520)        │   │
+│ │ (280×200)    │ │                │  └──────────────────┘   │
+│ ├──────────────┤ │                │  ┌──────────────────┐   │
+│ │ BatteryMeter │ │                │  │  NavBar (80px)   │   │
+│ │ (280×198)    │ │                │  └──────────────────┘   │
+│ └──────────────┘ │                │                         │
+└──────────────────┴────────────────┴─────────────────────────┘
 ```
 
-**전환 완료 내용**:
-- `HU_MainApp_Compositor`: IC 앱(GearState, Speedometer, BatteryMeter) 레이아웃 흡수, `socketName` 제거 → 앱들이 `wayland-1`로 직접 연결
-- IC 앱 3개 서비스 파일: `wayland-2` → `wayland-1`, `Requires=ic-compositor` 제거
-- HU 앱 4개 서비스 파일: `wayland-3` → `wayland-1`, `Requires=hu-mainapp-compositor` 유지
-- `ic-compositor`: `SYSTEMD_AUTO_ENABLE = "disable"` (패키지는 유지, 서비스만 비활성화)
-- `hu-mainapp-compositor`: 버전 `2.0` → `3.0` (통합 compositor)
+---
+
+#### 🎯 목표 레이아웃 (세로 portrait 화면 기준)
+
+디스플레이: **600 × 1024** (portrait), 세로로 세워진 화면
+
+```
+┌─────────────────────────┐  ← 600px
+│                         │
+│   IC 영역  (600×340)    │
+│                         │
+│  ┌───────┬───────┬────┐ │
+│  │Gear   │Speed  │Bat │ │  ← IC 앱 3개 가로로 나란히
+│  │State  │ometer │tery│ │    각 앱: 200×340
+│  │       │       │    │ │    (앱 내용은 세로 기준으로 그려짐 → 그대로 OK)
+│  └───────┴───────┴────┘ │
+├─────────────────────────┤  ← 구분선
+│                         │
+│  HU 영역  (600×684)     │
+│                         │
+│  ┌────┬────────────────┐ │
+│  │ P  │                │ │
+│  │ R  │                │ │
+│  │ N  │  HomeScreen    │ │  ← GearApp(PRND): 130×604
+│  │ D  │  / Media       │ │    HomeScreen 등: 470×604
+│  │    │  / Ambient     │ │
+│  │    │                │ │
+│  └────┴────────────────┘ │
+│  ┌─────────────────────┐ │
+│  │   Navigation Bar    │ │  ← 하단 NavBar: 600×80
+│  └─────────────────────┘ │
+└─────────────────────────┘
+      600px
+```
+
+**핵심 요약**:
+- IC 3개 앱: **세로(portrait) 기준**으로 그려진 콘텐츠 → 세로 컨테이너(200×340)에 그대로 배치 ✅
+- GearApp (PRND): **세로** 컨테이너 (130×604) → 세로 내용 그대로 배치 ✅
+- HomeScreen 등 HU 메인: **세로** 컨테이너 (470×604) → 세로 내용 그대로 배치 ✅
+- **결론**: 앱들은 portrait 기준으로 그려져 있고, 디스플레이도 portrait → **앱 내용 rotation 불필요**
+
+---
+
+#### 🔴 현재 문제 (DP TEST 모드에서 확인된 것)
+
+현재 DP 연결 상태는 **landscape 1024×600**이므로,  
+앱들(portrait 기준 렌더링)이 컨테이너에 들어가면 90도 틀어져 보임 → **DP 테스트에서는 정상이 아님**.
+
+Elecrow portrait 화면으로 전환하면 앱 내용 방향이 맞음.
+
+---
+
+#### 🔧 Elecrow portrait 전환 시 변경 필요 항목 (4개 파일)
+
+| 파일 | 변경 내용 |
+|------|----------|
+| `compositor_modular.qml` | `width: 600`, `height: 1024` |
+| `CompositorLayout.qml` | IC → 상단 Row(600×340), HU → 하단 Col |
+| `SurfaceRouter.qml` | IC: `Qt.size(200,340)`, GearApp: `Qt.size(130,604)`, HU: `Qt.size(470,524)` |
+| `weston.ini` | `name=HDMI-A-1`, `transform=90` |
 
 ### 4.2 네트워크 보안 (OTA 관련)
 

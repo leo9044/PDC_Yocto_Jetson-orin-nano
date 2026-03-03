@@ -12,7 +12,7 @@ SRC_URI = " \
     file://qml/ \
     file://asset/ \
     file://qml_compositor.qrc \
-    file://hu-mainapp-compositor.service \
+    file://unified-compositor.service \
 "
 
 S = "${WORKDIR}"
@@ -26,10 +26,10 @@ EXTRA_OECMAKE = " \
 do_install:append() {
     # systemd service
     install -d ${D}${systemd_system_unitdir}
-    install -m 0644 ${WORKDIR}/hu-mainapp-compositor.service ${D}${systemd_system_unitdir}/
+    install -m 0644 ${WORKDIR}/unified-compositor.service ${D}${systemd_system_unitdir}/
 }
 
-SYSTEMD_SERVICE:${PN} = "hu-mainapp-compositor.service"
+SYSTEMD_SERVICE:${PN} = "unified-compositor.service"
 SYSTEMD_AUTO_ENABLE = "enable"
 
-FILES:${PN} += "${bindir}/HU_MainApp_Compositor"
+FILES:${PN} += "${bindir}/UnifiedCompositor"

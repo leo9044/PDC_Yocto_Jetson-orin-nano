@@ -49,7 +49,7 @@ IMAGE_INSTALL:append = " \
 
 # SEAME HU Applications
 IMAGE_INSTALL:append = " \
-    hu-mainapp-compositor \
+    unified-compositor \
     gearapp \
     mediaapp \
     ambientapp \

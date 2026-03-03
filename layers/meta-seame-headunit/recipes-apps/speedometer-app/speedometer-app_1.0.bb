@@ -65,8 +65,8 @@ do_install:append() {
     cat > ${D}${systemd_system_unitdir}/speedometer-app.service << 'EOF'
 [Unit]
 Description=Speedometer App - IC Speed Display
-After=hu-mainapp-compositor.service vsomeip-routing-manager.service
-Requires=hu-mainapp-compositor.service
+After=unified-compositor.service vsomeip-routing-manager.service
+Requires=unified-compositor.service
 
 [Service]
 Type=simple

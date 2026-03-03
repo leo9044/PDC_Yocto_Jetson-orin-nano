@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(HU_MainApp_Compositor VERSION 2.0 LANGUAGES CXX)
+project(UnifiedCompositor VERSION 1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -30,12 +30,12 @@ set(QML_RESOURCES
 )
 
 # Executable
-add_executable(HU_MainApp_Compositor
+add_executable(UnifiedCompositor
     ${SOURCES}
     ${QML_RESOURCES}
 )
 
-target_link_libraries(HU_MainApp_Compositor
+target_link_libraries(UnifiedCompositor
     Qt5::Core
     Qt5::Quick
     Qt5::Qml
@@ -43,4 +43,4 @@ target_link_libraries(HU_MainApp_Compositor
 )
 
 # Install target
-install(TARGETS HU_MainApp_Compositor DESTINATION bin)
+install(TARGETS UnifiedCompositor DESTINATION bin)

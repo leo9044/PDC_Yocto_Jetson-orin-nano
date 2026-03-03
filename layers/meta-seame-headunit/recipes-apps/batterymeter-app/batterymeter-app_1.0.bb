@@ -64,8 +64,8 @@ do_install:append() {
     cat > ${D}${systemd_system_unitdir}/batterymeter-app.service << 'EOF'
 [Unit]
 Description=BatteryMeter App - IC Battery Status Display
-After=hu-mainapp-compositor.service vsomeip-routing-manager.service
-Requires=hu-mainapp-compositor.service
+After=unified-compositor.service vsomeip-routing-manager.service
+Requires=unified-compositor.service
 
 [Service]
 Type=simple

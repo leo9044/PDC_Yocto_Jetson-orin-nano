@@ -1,15 +1,15 @@
 [Unit]
 Description=Gear Selection Application
 Documentation=https://github.com/leo9044/PDC_leo
-Requires=hu-mainapp-compositor.service vsomeip-routing-manager.service
-After=hu-mainapp-compositor.service vsomeip-routing-manager.service
+Requires=unified-compositor.service vsomeip-routing-manager.service
+After=unified-compositor.service vsomeip-routing-manager.service
 
 [Service]
 Type=simple
 User=weston
 Group=weston
 
-# Wait for wayland-2 socket (hu-mainapp-compositor) to be ready
+# Wait for wayland-2 socket (unified-compositor) to be ready
 ExecStartPre=/bin/sh -c 'for i in $(seq 1 20); do test -S /run/user/1000/wayland-2 && break || sleep 1; done'
 
 # Wayland 환경 - Unified Compositor 연결

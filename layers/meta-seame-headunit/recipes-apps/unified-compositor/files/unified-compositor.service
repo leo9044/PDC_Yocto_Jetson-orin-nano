@@ -15,7 +15,7 @@ Environment="QT_QUICK_BACKEND=software"
 Environment="QT_QPA_FONTDIR=/usr/share/fonts"
 Environment="QT_LOGGING_RULES=qt.qpa.fonts=true"
 Environment="FONTCONFIG_FILE=/etc/fonts/fonts.conf"
-ExecStart=/usr/bin/HU_MainApp_Compositor
+ExecStart=/usr/bin/UnifiedCompositor
 Restart=always
 RestartSec=3
 
