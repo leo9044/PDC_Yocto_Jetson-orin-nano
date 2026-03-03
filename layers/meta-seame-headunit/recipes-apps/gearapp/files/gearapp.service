@@ -2,8 +2,7 @@
 Description=Gear Selection Application
 Documentation=https://github.com/leo9044/PDC_leo
 Requires=hu-mainapp-compositor.service vsomeip-routing-manager.service
-After=hu-mainapp-compositor.service vsomeip-routing-manager.service network-online.target
-Wants=network-online.target
+After=hu-mainapp-compositor.service vsomeip-routing-manager.service
 
 [Service]
 Type=simple
