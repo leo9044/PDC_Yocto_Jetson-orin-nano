@@ -4,7 +4,9 @@ import Design 1.0
 
 Window {
     id: mainWindow
-    // Size controlled by Compositor sendConfigure (200x340 portrait)
+    // Initial size hint to prevent zero-size flicker before Compositor sendConfigure
+    width: 200
+    height: 340
     visible: true
     title: "Gear State"
     color: Constants.backgroundColor
