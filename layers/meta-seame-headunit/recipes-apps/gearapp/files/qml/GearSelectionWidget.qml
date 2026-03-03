@@ -4,11 +4,10 @@ import QtQuick.Controls 2.12
 // HeadUnit 모듈 제거: C++ backend는 contextProperty로 노출됨
 
 // GearApp 독립 실행용 메인 윈도우
-// Left panel: 130px width, full height minus nav bar
+// Left panel: size controlled by Compositor sendConfigure (130x604 portrait)
 Window {
     id: window
-    width: 130
-    height: 1000  // 1080 - 80 (nav bar)
+    // Size controlled by Compositor sendConfigure
     visible: true
     title: "GearApp"
     color: "#1a1a1a"

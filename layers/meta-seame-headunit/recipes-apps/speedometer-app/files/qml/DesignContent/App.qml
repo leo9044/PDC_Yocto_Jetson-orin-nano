@@ -4,8 +4,7 @@ import Design 1.0
 
 Window {
     id: mainWindow
-    width: 400
-    height: 600
+    // Size controlled by Compositor sendConfigure (200x340 portrait)
     visible: true
     title: "Speedometer"
     color: Constants.backgroundColor
@@ -18,19 +17,19 @@ Window {
         // Bind to vehicleClient speed
         property int currentSpeed: vehicleClient.speed
         
-        // Speedometer gauge container (centered)
+        // Speedometer gauge container (centered, scales with window)
         Item {
             id: gaugeContainer
-            width: 400
-            height: 400
+            width: Math.min(parent.width, parent.height)
+            height: width
             anchors.centerIn: parent
             
             // Background speed gauge (rotated 45°)
             Image {
                 id: gauge_Speed
                 anchors.centerIn: parent
-                width: 400
-                height: 400
+                width: parent.width
+                height: parent.height
                 source: "qrc:/images/Gauge_Speed.png"
                 rotation: 45
                 fillMode: Image.PreserveAspectFit

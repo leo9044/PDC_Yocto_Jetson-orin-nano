@@ -4,13 +4,11 @@ import QtQuick.Controls 2.12
 import QtGraphicalEffects 1.0
 
 // HomeScreen Dashboard - Displays aggregated info from services
-// Content area: right of GearApp, above navigation bar
+// Content area: size controlled by Compositor sendConfigure (470x524 portrait)
 Window {
     id: window
-    width: 1790  // 1920 - 130
-    height: 1000  // 1080 - 80
+    // Size controlled by Compositor sendConfigure
     visible: true
-    visibility: Window.Maximized
     title: "HomeScreen"
     flags: Qt.Window | Qt.FramelessWindowHint
 

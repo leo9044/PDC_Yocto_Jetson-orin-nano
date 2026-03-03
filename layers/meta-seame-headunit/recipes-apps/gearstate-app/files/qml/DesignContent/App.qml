@@ -4,8 +4,7 @@ import Design 1.0
 
 Window {
     id: mainWindow
-    width: 280
-    height: 600
+    // Size controlled by Compositor sendConfigure (200x340 portrait)
     visible: true
     title: "Gear State"
     color: Constants.backgroundColor
@@ -18,11 +17,11 @@ Window {
         // Bind to vehicleClient gearState
         property string currentGear: vehicleClient.gearState
         
-        // Gear gauge container (centered)
+        // Gear gauge container (centered, scales with window)
         Item {
             id: gaugeContainer
-            width: 280
-            height: 280
+            width: Math.min(parent.width, parent.height)
+            height: width
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.verticalCenter: parent.verticalCenter
             anchors.verticalCenterOffset: -10
