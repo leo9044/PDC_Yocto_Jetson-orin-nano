@@ -7,9 +7,7 @@ import QtGraphicalEffects 1.0
 // Content area: size controlled by Compositor sendConfigure (470x524 portrait)
 Window {
     id: window
-    // Initial size hint to prevent zero-size flicker before Compositor sendConfigure
-    width: 470
-    height: 524
+    // Size controlled by Compositor sendConfigure
     visible: true
     title: "HomeScreen"
     flags: Qt.Window | Qt.FramelessWindowHint

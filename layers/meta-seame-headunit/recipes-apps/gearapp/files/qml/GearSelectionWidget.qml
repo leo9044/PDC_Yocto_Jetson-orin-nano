@@ -7,9 +7,7 @@ import QtQuick.Controls 2.12
 // Left panel: size controlled by Compositor sendConfigure (130x604 portrait)
 Window {
     id: window
-    // Initial size hint to prevent zero-size flicker before Compositor sendConfigure
-    width: 130
-    height: 604
+    // Size controlled by Compositor sendConfigure
     visible: true
     title: "GearApp"
     color: "#1a1a1a"
