@@ -2,7 +2,8 @@
 
 > **플랫폼**: NVIDIA Jetson Orin Nano (ECU2) + Raspberry Pi 4 (ECU1)  
 > **빌드 시스템**: Yocto Scarthgap + L4T R36.4.4  
-> ⚠️ 계획 및 로드맵은 `NEXT_PROJECT_ANALYSIS.md` 참조. 이 파일은 완료된 작업만 기록.
+> ⚠️ 계획 및 로드맵은 `NEXT_PROJECT_ANALYSIS.md` 참조. 이 파일은 완료된 작업만 기록.  
+> ⚠️ 다음 Phase 계획은 `CONTAINER_OTA_ROADMAP.md` 참조.
 
 ---
 
@@ -146,3 +147,79 @@ layers/meta-seame-headunit/
      │         서비스 유닛을 heredoc으로 직접 작성 (구조는 동일)
      └─ 이유: IC 앱이 bb 파일 하나로 빌드+서비스 설정을 한 번에 관리
 ```
+
+---
+
+## Phase 2: unified-compositor 리팩토링 + 렌더링 안정화 ✅
+
+> 기간: 2026-03-02 ~ 2026-03-04  
+> 목표: compositor 명칭 통일, GPU 렌더링 시도 및 롤백, software 렌더링 최종 확정
+
+### 2.1 unified-compositor 리네이밍
+
+기존 `hu-mainapp-compositor`를 `unified-compositor`로 전체 리네이밍.
+
+**변경 이유**: IC 앱까지 포함한 단일 compositor가 됐으므로 "HU 전용"이라는 명칭이 부정확.
+
+변경 범위: `recipes-apps/hu-mainapp-compositor/` → `recipes-apps/unified-compositor/`,
+`meta-seame-headunit.bb` IMAGE_INSTALL, `qml_compositor.qrc` 삭제된 SVG 참조 제거.
+
+| 커밋 | 내용 |
+|------|------|
+| `42d882de` | refactor: rename hu-mainapp-compositor → unified-compositor |
+| `c652ef06` | fix: remove deleted SVG references from qml_compositor.qrc |
+
+### 2.2 GPU 렌더링 테스트 → 실패 → software 롤백
+
+**시도한 설정:**
+
+| 앱 구분 | QSG_RENDER_LOOP | QT_QUICK_BACKEND |
+|---------|----------------|------------------|
+| unified-compositor | `basic` | `opengl` |
+| HU 앱 4개 + IC 앱 3개 | `threaded` | `opengl` |
+
+**결과: 앱 전체 깜빡임 (크래시 루프)**
+
+원인: `Restart=always` + EGL 초기화 실패 → 3초마다 재시작 루프.
+Qt Wayland Compositor 역할 앱에서 `threaded` 사용 시 surface management race condition 유발.
+
+**최종 결론**: Jetson Orin Nano + Qt5 + Wayland 스택에서 `QT_QUICK_BACKEND=opengl` 사용 불가.
+GPU 렌더링 재시도는 SSH/UART 접근 가능 시 로그 분석 후 판단.
+
+**최종 확정 렌더링 설정 (전 앱 공통):**
+```
+QSG_RENDER_LOOP=basic
+QT_QUICK_BACKEND=software
+```
+
+| 커밋 | 내용 |
+|------|------|
+| `15905922` | test: switch to GPU rendering (opengl+threaded) |
+| `2d73449e` | fix: unified-compositor QSG_RENDER_LOOP basic으로 수정 |
+| `3e7781c5` | revert: restore software rendering ← **현재 HEAD** |
+
+### 2.3 현재 서비스 기동 순서
+
+```
+weston.service
+  └── unified-compositor.service
+        ├── gearapp / homescreenapp / mediaapp / ambientapp
+        └── speedometer-app / batterymeter-app / gearstate-app
+
+vsomeip-routing-manager.service (병렬)
+  └── vehiclecontrolmock.service
+```
+
+### 2.4 알려진 미해결 사항
+
+| 항목 | 상태 | 비고 |
+|------|------|------|
+| GPU 렌더링 (opengl) | ❌ EGL 초기화 실패 | 로그 분석 필요 |
+| UART 콘솔 접근 | ❌ | ttyTCU0은 USB-C Device Mode로만 노출, Yocto 이미지에 USB gadget 미설정 |
+| weston-terminal 아이콘 | 의도적 없음 | `panel-position=none` 설정 |
+
+---
+
+## 다음 단계
+
+→ `CONTAINER_OTA_ROADMAP.md` 참조
