@@ -220,6 +220,65 @@ vsomeip-routing-manager.service (병렬)
 
 ---
 
+## Phase 3: 컨테이너 격리 🔄
+
+> 기간: 2026-03-05 ~  
+> 목표: HU/IC 앱을 Docker 컨테이너로 격리 실행
+
+### 3.0 사전 준비 ✅
+
+**Docker 추가 (2026-03-05)**
+
+`seame-headunit-image.bb`에 `docker-moby` 추가.  
+`meta-virtualization` 레이어가 이미 `bblayers.conf`에 포함되어 있어 레이어 추가 불필요.  
+`tegrademo.inc`의 `DISTRO_FEATURES`에 `virtualization`이 이미 포함되어 있어 별도 설정 불필요.
+
+**cgroup v2 활성화**
+
+`layer.conf`에 `UBOOT_EXTLINUX_KERNEL_ARGS:append = " systemd.unified_cgroup_hierarchy=1"` 추가.  
+Jetson은 `APPEND:append`가 아닌 EXTLINUX 방식으로 커널 파라미터를 추가함.  
+`local.conf`가 `.gitignore` 대상이므로 `layer.conf`로 이동 (git 추적 가능).
+
+**IC 앱 서비스 파일 분리 (선행 완료)**
+
+커밋 `2bc8f961`: bb 인라인 heredoc → 독립 `.service` 파일 3개로 분리.  
+컨테이너 환경변수 수정 시 bb 전체 재빌드 없이 서비스 파일만 교체 가능.
+
+**Weston 터미널 복구**
+
+`weston.ini`에서 `panel-position=none` → `bottom`, `[launcher]` 섹션 추가.  
+SSH 접속을 위해 IP 확인 가능하도록 복구.
+
+**빌드 결과 확인**
+
+```
+docker-moby          25.0.3   ← 포함됨
+docker-moby-cli      25.0.3
+containerd           v2.0.7
+runc                 1.1.14
+```
+
+**보드 동작 확인 (SSH: root@192.168.86.247)**
+
+```
+docker.service: active (running)
+docker run --rm hello-world → 정상 동작 (arm64v8)
+```
+
+| 커밋 | 내용 |
+|------|------|
+| `2bc8f961` | refactor: IC 앱 서비스 파일 bb 인라인 → 독립 파일 |
+| `acde3d32` | feat(phase3-0): add docker-moby + cgroup v2 kernel param |
+| `9435347d` | fix(phase3-0): move cgroup v2 param to layer.conf |
+| `6ab0e55d` | fix(phase3-0): remove docker-moby-contrib (unnecessary) |
+| `fa5e200a` | fix: restore weston panel + terminal launcher |
+
+### 3.1 HU 앱 컨테이너화 🔄
+
+→ 진행 중
+
+---
+
 ## 다음 단계
 
 → `CONTAINER_OTA_ROADMAP.md` 참조
