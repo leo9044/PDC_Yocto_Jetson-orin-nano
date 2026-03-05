@@ -32,24 +32,28 @@
 
 ### Phase 3-0: 사전 준비 (공동)
 
-- [ ] Yocto 이미지에 Docker 추가
+- [x] Yocto 이미지에 Docker 추가
   ```bitbake
   # seame-headunit-image.bb
-  IMAGE_INSTALL:append = " docker-moby"
+  IMAGE_INSTALL:append = " docker-moby docker-moby-contrib"
   ```
-  > `meta-virtualization`이 이미 `bblayers.conf`에 있으므로 레이어 추가 불필요
+  > `meta-virtualization`이 이미 `bblayers.conf`에 있으므로 레이어 추가 불필요  
+  > `DISTRO_FEATURES`에 `virtualization`이 `tegrademo.inc`에서 이미 포함됨
 
-- [ ] cgroup v2 활성화 확인
+- [x] cgroup v2 활성화
   ```bash
-  # 보드에서:
-  cat /sys/fs/cgroup/cgroup.controllers
-  # 비어있으면 local.conf에 추가:
-  # APPEND:append = " systemd.unified_cgroup_hierarchy=1"
-  ```
+  # local.conf 추가 (완료):
+  # UBOOT_EXTLINUX_KERNEL_ARGS:append = " systemd.unified_cgroup_hierarchy=1"
 
-- [ ] IC 앱 서비스 파일 bb 인라인 → 별도 .service 파일로 분리 (leo)
-  > 현재 IC 앱 3개는 bb 파일 안에 heredoc으로 서비스 유닛 정의.
-  > 컨테이너 환경변수 수정 시 전체 재빌드 필요하므로 HU 앱처럼 분리 필요.
+  # 보드에서 확인:
+  cat /sys/fs/cgroup/cgroup.controllers
+  # 출력 예: cpuset cpu io memory hugetlb pids rdma
+  ```
+  > Jetson은 U-Boot EXTLINUX 방식으로 커널 파라미터 추가  
+  > `APPEND:append` 방식이 아닌 `UBOOT_EXTLINUX_KERNEL_ARGS:append` 사용
+
+- [x] IC 앱 서비스 파일 bb 인라인 → 별도 .service 파일로 분리 (leo)
+  > 완료 (커밋 `2bc8f961`): batterymeter-app, speedometer-app, gearstate-app
 
 ---
 

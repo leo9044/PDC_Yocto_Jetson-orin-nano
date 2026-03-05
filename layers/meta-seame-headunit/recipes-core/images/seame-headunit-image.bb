@@ -64,6 +64,13 @@ IMAGE_INSTALL:append = " \
     speedometer-app \
 "
 
+# Docker (meta-virtualization layer already in bblayers.conf)
+# DISTRO_FEATURES에 virtualization이 이미 포함되어 있어 레이어 추가 불필요
+IMAGE_INSTALL:append = " \
+    docker-moby \
+    docker-moby-contrib \
+"
+
 # Network tools (already in demo-image-weston but ensure presence)
 IMAGE_INSTALL:append = " \
     iproute2 \
