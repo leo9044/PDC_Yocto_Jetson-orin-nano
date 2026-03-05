@@ -66,10 +66,8 @@ IMAGE_INSTALL:append = " \
 
 # Docker (meta-virtualization layer already in bblayers.conf)
 # DISTRO_FEATURES에 virtualization이 이미 포함되어 있어 레이어 추가 불필요
-IMAGE_INSTALL:append = " \
-    docker-moby \
-    docker-moby-contrib \
-"
+# containerd, runc 등 의존성은 Yocto가 RDEPENDS로 자동 포함
+IMAGE_INSTALL:append = " docker-moby"
 
 # Network tools (already in demo-image-weston but ensure presence)
 IMAGE_INSTALL:append = " \
