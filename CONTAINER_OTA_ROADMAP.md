@@ -47,7 +47,7 @@
   # APPEND:append = " systemd.unified_cgroup_hierarchy=1"
   ```
 
-- [ ] IC 앱 서비스 파일 bb 인라인 → 별도 .service 파일로 분리 (chang)
+- [ ] IC 앱 서비스 파일 bb 인라인 → 별도 .service 파일로 분리 (leo)
   > 현재 IC 앱 3개는 bb 파일 안에 heredoc으로 서비스 유닛 정의.
   > 컨테이너 환경변수 수정 시 전체 재빌드 필요하므로 HU 앱처럼 분리 필요.
 
