@@ -94,6 +94,23 @@ microSD (외장):
 | systemd-nspawn | ✅ systemd 내장 | 낮음 | 가능 |
 | Linux namespaces/cgroups 직접 구현 | ✅ 학습 목적 최적 | 중간 | 추천 |
 
+#### 🔑 우리 프로젝트에서 컨테이너화의 진짜 의의
+
+컨테이너를 **"격리 도구"** 로만 이해하면 우리 시스템에서는 의미 없어 보인다.
+vsomeip(`--network=host`)와 Wayland 소켓 공유 때문에 네트워크/디스플레이 격리는
+구조적으로 불가능하기 때문이다.
+
+그러나 컨테이너의 본질적 가치는 세 가지다:
+
+| 가치 | 우리 프로젝트 해당 여부 | 구체적 의미 |
+|------|------------------------|-------------|
+| **네트워크 격리** | ❌ vsomeip 멀티캐스트로 불가 | — |
+| **파일시스템 격리** | △ 런타임 소켓은 공유, 바이너리는 격리 | 라이브러리 충돌 방지 |
+| **자원 경계 (cgroup)** | ✅ **핵심** | HU OOM이 IC에 전파 차단 |
+| **이미지 단위 배포** | ✅ **핵심** | OTA 단위 = 이미지 태그, 롤백 가능 |
+| **개발 독립성** | ✅ **핵심** | leo(HU) / chang(IC) 책임 분리 |
+| **오케스트레이션** | ✅ **핵심** | 컨테이너 재시작·순서·OTA 롤백 자동화 |
+
 ### 2.2 핵심 기회: meta-virtualization 이미 bblayers.conf에 있다
 
 ```bash
@@ -115,23 +132,33 @@ BBLAYERS ?= " \
 
 ### 2.3 컨테이너화 대상 정의
 
-**HU 도메인 (leo 담당)**:
-```
-컨테이너 분리 전: systemd 서비스로 직접 실행
-  weston.service
-    └── hu-mainapp-compositor.service
-        ├── gearapp.service
-        ├── mediaapp.service
-        ├── ambientapp.service
-        └── homescreenapp.service
+**확정 구조: 앱별 단독 컨테이너 + IC/HU 그룹 분리**
 
-컨테이너 분리 후 (목표):
-  weston.service  (호스트)
-    └── HU-container (cgroup v2 제한)
-        ├── GearApp  (namespace 격리)
-        ├── MediaApp
-        └── ...
 ```
+[호스트 — 절대 컨테이너화 안 함]
+  weston.service                  ← Wayland 인프라
+  vsomeip-routing-manager.service ← SOME/IP 인프라
+
+[IC 그룹 — chang 담당, cgroup memory=256m]
+  speedometer-app        → docker: ic-speedometer:버전
+  batterymeter-app       → docker: ic-batterymeter:버전
+  gearstate-app          → docker: ic-gearstate:버전
+  이미지: 각각 독립 → chang이 IC 이미지만 빌드/OTA
+
+[HU 그룹 — leo 담당, cgroup memory=512m]
+  unified-compositor     → docker: hu-compositor:버전
+  gearapp                → docker: hu-gearapp:버전
+  homescreenapp          → docker: hu-homescreen:버전
+  mediaapp               → docker: hu-media:버전
+  ambientapp             → docker: hu-ambient:버전
+  이미지: 각각 독립 → leo가 HU 이미지만 빌드/OTA
+```
+
+> **왜 앱별 단독 컨테이너인가?**
+> HU 4개를 하나의 compose 덩어리로 묶으면 gearapp 하나를 업데이트해도
+> 덩어리 전체를 재배포해야 한다. 이미지 단위 배포의 이점이 사라진다.
+> 앱마다 이미지가 독립되어야 `docker load hu-gearapp:1.0.1`로 gearapp만 교체 가능.
+> docker-compose.yml은 **실행 편의**를 위한 것이지 이미지 단위와 무관하다.
 
 ### 2.4 ⚠️ 예상 문제점: Wayland + 컨테이너
 
@@ -411,6 +438,55 @@ Yocto 이미지의 커널 config에서 활성화 여부 확인 필요.
 APPEND:append = " systemd.unified_cgroup_hierarchy=1"
 ```
 
+#### ❓ 왜 자원 제한 없으면 한쪽 장애가 다른 쪽에 전파되나?
+
+**Linux OOM Killer의 동작 방식** 때문이다.
+
+```
+[자원 제한 없는 상태]
+Jetson RAM 8GB를 모든 프로세스가 공유:
+  weston + vsomeip + IC 앱 3개 + HU 앱 4개 → 전부 같은 메모리 풀
+
+GearApp 메모리 누수 발생:
+  GearApp: 300MB → 1GB → 3GB → 6GB 급증
+  → 커널 OOM 감지 → OOM Killer 실행
+  → oom_score 기반으로 프로세스 선택해서 kill
+  → GearApp을 kill해도 재시작 → 또 누수 → OOM 반복
+  → 이 과정에서 OOM Killer가 Speedometer, BatteryMeter를 선택할 수 있음
+  → IC 앱이 HU 앱 때문에 죽는 상황 발생
+```
+
+**더 조용한 문제 — 스왑 폭주:**
+```
+HU 앱이 메모리를 많이 쓰면 커널이 덜 쓰는 페이지를 디스크로 스왑
+  → IC 앱의 메모리 페이지도 스왑 아웃될 수 있음
+  → Speedometer가 속도값 읽으려고 메모리 접근
+  → 페이지 폴트 → 디스크에서 스왑 인 대기 (수십~수백ms 지연)
+  → IC 앱이 죽진 않았어도 UI가 프리즈된 것처럼 보임
+```
+
+**cgroup 메모리 제한이 해결하는 방식:**
+```
+HU 그룹: --memory=512m  (이 한도 내에서만 사용 가능)
+  GearApp 누수 → 512MB 한도 도달
+  → 커널이 HU cgroup 내에서만 OOM Kill (IC에 영향 없음)
+  → IC cgroup(--memory=256m)은 완전히 분리된 메모리 풀
+  → IC 앱 메모리는 HU에 의해 절대 침범되지 않음
+```
+
+> **한 줄 요약**: cgroup은 메모리 풀을 물리적으로 나눠서
+> HU의 폭주가 IC의 물리 메모리를 빼앗아 가지 못하게 막는 경계선이다.
+
+```bash
+# 우리 프로젝트 적용 예시:
+docker run --memory=512m --memory-swap=512m \
+  --cpus=2.0 hu-gearapp:1.0.0   # HU: 최대 512MB, 2코어
+
+docker run --memory=256m --memory-swap=256m \
+  --cpus=1.0 ic-speedometer:1.0.0  # IC: 최대 256MB, 1코어
+# → HU가 512MB를 다 써도 IC의 256MB는 보장됨
+```
+
 ### 2.10 역할 분담 관점에서의 검토 (leo: HU, chang: IC)
 
 **잘 나뉜 분담이다.** 이유:
@@ -476,6 +552,145 @@ Environment="QT_QUICK_BACKEND=software"  ← 전 앱(HU + IC) 공통
 
 ---
 
+### 2.11 산업 맥락 — vsomeip와 컨테이너 네트워크 격리
+
+#### 왜 네트워크 격리를 포기하는가?
+
+vsomeip는 SOME/IP(Service-Oriented Middleware over IP) 프로토콜을 구현하며,
+service discovery에 **UDP 멀티캐스트(224.0.0.x)**를 사용한다.
+멀티캐스트는 실제 NIC(`enP8p1s0`)에 직접 바인딩해야 하므로,
+컨테이너의 가상 네트워크 인터페이스(veth)로는 동작하지 않는다.
+따라서 `--network=host`가 필수이며, 이 순간 네트워크 격리는 0이 된다.
+
+```
+컨테이너 기본 네트워크 (bridge 모드):
+  호스트 enP8p1s0 (192.168.1.101)
+    └── docker0 bridge (172.17.0.1)
+          └── veth → 컨테이너 eth0 (172.17.0.2)
+  ← vsomeip multicast 라우팅 실패 (enP8p1s0 미접근)
+
+--network=host 사용 시:
+  컨테이너가 enP8p1s0를 직접 사용
+  ← vsomeip 동작함, but 네트워크 격리 없음
+```
+
+#### 실제 산업에서는 어떻게 하나?
+
+산업에서는 vsomeip/SOME/IP가 있는 환경에서 두 가지 접근을 사용한다:
+
+**① 물리적 ECU 분리 (표준 접근)**
+
+```
+실제 차량:
+  ECU A (HU SoC)  ─── Ethernet ─── ECU B (IC SoC)
+  각 ECU는 물리적으로 분리되어 있으므로
+  네트워크 격리를 소프트웨어로 흉내 낼 필요 자체가 없음
+```
+
+AUTOSAR Adaptive, SOAFEE 표준 모두 기본적으로
+**HU와 IC는 서로 다른 물리 ECU**를 전제로 설계되어 있다.
+컨테이너는 **하나의 ECU 안에서 여러 공급업체 소프트웨어를 격리**하는 용도이지,
+ECU간 네트워크 격리를 대체하는 것이 아니다.
+
+**② SOME/IP 프록시 패턴 (고급 접근)**
+
+```
+BMW, Bosch 일부 구현:
+  vsomeip routing manager (호스트, --network=host)
+      ↑ IPC (Unix socket 또는 shared memory)
+  컨테이너 A (bridge 모드, 172.17.0.2)
+  컨테이너 B (bridge 모드, 172.17.0.3)
+```
+
+컨테이너들은 `bridge` 모드로 격리된 네트워크를 갖고,
+vsomeip routing manager만 호스트에서 실제 NIC를 사용하여 외부와 통신.
+컨테이너들은 routing manager와 **내부 IPC**로만 통신.
+이 구조에서는 컨테이너 간 네트워크 격리가 실현된다.
+
+**③ 우리 프로젝트의 현실적 선택**
+
+```
+현재 우리 구조 (현실적 최선):
+  호스트: weston + vsomeip-routing-manager  (--network=host로 실제 NIC 접근)
+  IC 컨테이너: --network=host               (routing manager 클라이언트)
+  HU 컨테이너: --network=host               (routing manager 클라이언트)
+  → 네트워크 격리 없음, 하지만 cgroup 자원 격리는 있음
+```
+
+②번 프록시 패턴이 더 정석이지만 vsomeip IPC 설정 변경이 필요하고
+우리 프로젝트 범위를 벗어난다. **네트워크 격리 포기, 자원 격리 + 배포 단위 집중이 현실적.**
+
+#### 정리: 우리가 얻는 것과 포기하는 것
+
+| 격리 종류 | 포기 여부 | 이유 |
+|-----------|-----------|------|
+| 네트워크 격리 | ❌ 포기 | vsomeip 멀티캐스트 → `--network=host` 필수 |
+| 디스플레이 격리 | ❌ 포기 | Wayland 소켓 공유 마운트 필수 |
+| 파일시스템 격리 | △ 부분 | 바이너리·라이브러리는 격리, 런타임 소켓은 공유 |
+| **PID 격리** | ✅ 확보 | 컨테이너 기본 제공, HU 프로세스가 IC PID 접근 불가 |
+| **자원 격리 (cgroup)** | ✅ 확보 | HU OOM → IC 메모리 보호됨 |
+| **배포 단위 격리** | ✅ 확보 | 이미지 태그 = OTA 단위, 독립 롤백 가능 |
+| **개발 독립성** | ✅ 확보 | leo 이미지 변경이 chang 이미지에 영향 없음 |
+
+---
+
+### 2.12 오케스트레이션 — 컨테이너 생명주기 자동 관리
+
+**오케스트레이션(Orchestration)**이란 컨테이너를 **"띄우고, 죽이고, 재시작하고, 순서 맞추는"** 것을 자동으로 관리하는 것이다.
+
+**현재 우리 시스템 — systemd가 이미 오케스트레이션 중:**
+```
+weston.service
+  └── [After=weston] vsomeip-routing-manager.service
+        └── [After=vsomeip] unified-compositor.service
+              └── [After=unified-compositor] gearapp.service   (Restart=on-failure)
+              └── [After=unified-compositor] mediaapp.service  (Restart=on-failure)
+```
+`After=`, `Requires=`, `Restart=on-failure` — 이게 이미 오케스트레이션이다.
+
+**컨테이너 환경에서 docker-compose로 대응:**
+```yaml
+# docker-compose.yml
+services:
+  hu-compositor:
+    image: hu-compositor:1.0.0
+    restart: always                        # systemd Restart=on-failure 대응
+    healthcheck:
+      test: ["CMD", "test", "-S", "/run/user/1000/wayland-3"]
+
+  hu-gearapp:
+    image: hu-gearapp:1.0.1               # 버전 태그 = OTA 단위
+    restart: always
+    depends_on:
+      hu-compositor:
+        condition: service_healthy         # compositor 소켓 생성 후 시작 (After= 대응)
+```
+
+**OTA 시 오케스트레이션 — gearapp만 교체:**
+```bash
+docker load < hu-gearapp:1.0.1.tar.gz
+docker-compose up -d --no-deps hu-gearapp   # gearapp만 재시작, 나머지 유지
+
+# 실패 시 자동 롤백:
+if ! docker inspect hu-gearapp --format='{{.State.Health.Status}}' | grep -q healthy; then
+    docker-compose stop hu-gearapp
+    sed -i 's/hu-gearapp:1.0.1/hu-gearapp:1.0.0/' docker-compose.yml
+    docker-compose up -d --no-deps hu-gearapp
+fi
+```
+
+| 역할 | systemd (현재) | docker-compose (컨테이너) |
+|------|---------------|--------------------------|
+| 시작 순서 | `After=`, `Requires=` | `depends_on: condition` |
+| 재시작 정책 | `Restart=on-failure` | `restart: always` |
+| 헬스체크 | `ExecStartPre` 루프 | `healthcheck` |
+| OTA 롤백 | 없음 (수동) | 이전 이미지 태그로 교체 |
+
+> **규모 참고**: Kubernetes는 멀티 노드 클러스터용 오케스트레이터다.
+> 단일 Jetson에서는 docker-compose + systemd 조합으로 충분하다.
+
+---
+
 ## 3. OTA 업데이트
 
 ### 3.1 스코프 결정: 무엇을 업데이트할 것인가?
@@ -501,6 +716,55 @@ Scope 2 (OS/펌웨어 업데이트):
 **권장**: 두 스코프 모두 구현. 단, 순서를 분리해서:
 1. 먼저 Scope 1(앱) OTA 구현 → 검증
 2. 그 다음 Scope 2(OS) OTA로 확장
+
+### 3.1-A 컨테이너 OTA vs 바이너리 직접 교체
+
+**방법 A: 바이너리 직접 교체 (컨테이너 없음)**
+```bash
+systemctl stop gearapp
+cp new_GearApp /usr/bin/GearApp   # 덮어씀 → 이전 버전 사라짐
+systemctl start gearapp
+```
+
+**방법 B: 컨테이너 이미지 교체**
+```bash
+docker load < hu-gearapp:1.0.1.tar.gz  # load 완료 전까지 1.0.0 보존됨
+docker stop gearapp-container
+docker run hu-gearapp:1.0.1 ...
+# 실패 시: docker run hu-gearapp:1.0.0  ← 즉시 롤백
+```
+
+| 관점 | 바이너리 직접 교체 | 컨테이너 이미지 교체 |
+|------|-------------------|---------------------|
+| **롤백** | ❌ 이전 파일 덮어씀 | ✅ 이전 이미지 태그 자동 보존 |
+| **의존 라이브러리** | ⚠️ 라이브러리 따로 관리 | ✅ 이미지 내부에 전부 포함 |
+| **원자성** | ❌ 파일 하나씩 복사 | ✅ `docker load` = 전부 아니면 없음 |
+| **부분 실패** | ❌ 반쪽 상태 가능 | ✅ load 실패 = 기존 이미지 유지 |
+| **라이브러리 버전 업** | ❌ 호스트 전체에 영향 | ✅ 이미지 내부에만 적용, 호스트 무관 |
+
+**핵심 차이 — 라이브러리까지 통째로:**
+```
+바이너리 교체 방식:
+  GearApp 1.0.1이 Qt 5.15.8 필요 → 호스트의 libQt5Core도 교체해야 함
+  → 다른 앱(HomeScreen, MediaApp 등)에 영향 가능
+
+컨테이너 이미지 방식:
+  hu-gearapp:1.0.1 이미지 내부에 Qt 5.15.8 포함
+  → 호스트 rootfs의 Qt 5.15.2는 그대로 유지
+  → 다른 컨테이너/앱에 영향 없음
+```
+
+**실제 산업 표준 (Tesla, AGL, SOAFEE):**
+
+이중 OTA 구조가 업계 표준이다:
+```
+OS 레이어:  SWUpdate A/B 슬롯  → 커널/rootfs 변경 시 (재부팅 필요)
+앱 레이어:  컨테이너 이미지     → 앱/라이브러리 변경 시 (재부팅 없음, 30초 내 완료)
+```
+- **Tesla**: 게임, 브라우저, 주행 관련 앱을 컨테이너 이미지 단위로 무선 OTA
+- **SOAFEE** (Arm + BMW/Toyota/GM): Uptane 프로토콜 기반 OCI 이미지 OTA를 표준으로 정의
+- **AGL**: OSTree(OS OTA) + 컨테이너(앱 OTA) 이중 구조
+- **우리 설계** (SWUpdate OS OTA + Docker 이미지 앱 OTA): 이 이중 구조와 정확히 일치
 
 ### 3.2 Jetson OTA: 우리 스택의 현실
 
@@ -1031,3 +1295,4 @@ Phase 5 (로우레벨, 여유 시 진행):
 | 1.1 | 2026-02-26 | 2차 정밀 검토 반영: Wayland 소켓 번호 수정 (wayland-0→1), HU/IC 앱 실제 소켓 번호 확인, 컨테이너 User/UID 제약 추가, pigpio root 요건 추가, IC앱 인라인 서비스 정의 이슈 추가, enP8p1s0 하드코딩 이슈 추가 |
 | 1.2 | 2026-02-26 | 3차 정밀 검토 반영: **OTA 1순위를 RAUC→SWUpdate로 변경** (meta-tegrademo에 이미 통합 레이어 존재), IC앱이 Mock 데이터 사용(unicast:127.0.0.1, routing:VehicleControlMock) 발견, 모든 앱 QT_QUICK_BACKEND=software(GPU 불필요) 발견, vsomeip 라우팅 매니저 패키지 중복 충돌 이슈 추가, vehiclecontrolmock EXTERNALSRC 하드코딩 경로 경고 추가, main_compositor.cpp 오래된 주석(wayland-0) 경고 추가 |
 | 1.3 | 2026-03-02 | 디스플레이 단일화 완료: ASUS ZenScreen 탈락(6W DP 전력 공급 불가) → Elecrow 13.3" 4K + MiniHDMI 확정. 3-layer compositor → 단일 compositor 전환 완료. IC compositor 비활성화, 모든 앱 WAYLAND_DISPLAY=wayland-1 통일. |
+| 1.4 | 2026-03-07 | 컨테이너화 의의 재정립 및 산업 맥락 추가: 2.1 가치 표에 오케스트레이션 항목 추가. 2.3 컨테이너화 대상을 앱별 독립 이미지 구조로 재정의. 2.9에 OOM Killer/스왑 전파 원리 및 cgroup 해결 방식 추가. 2.11 vsomeip 네트워크 격리 산업 맥락(물리 ECU 분리/프록시 패턴/우리 선택) 추가. 2.12 오케스트레이션 섹션 신규 추가 (systemd↔docker-compose 대응표). 3.1-A 컨테이너 OTA vs 바이너리 교체 비교 및 Tesla/SOAFEE/AGL 산업 표준 추가. |

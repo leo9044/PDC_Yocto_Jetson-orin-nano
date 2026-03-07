@@ -273,9 +273,183 @@ docker run --rm hello-world → 정상 동작 (arm64v8)
 | `6ab0e55d` | fix(phase3-0): remove docker-moby-contrib (unnecessary) |
 | `fa5e200a` | fix: restore weston panel + terminal launcher |
 
-### 3.1 HU 앱 컨테이너화 🔄
+### 3.1 컨테이너화 설계 확정 ✅ (2026-03-07)
 
-→ 진행 중
+**대화 기반 설계 재정립** — 핵심 결정 사항:
+
+#### 컨테이너화의 진짜 의의 (재정립)
+
+| 이점 | 적용 여부 | 이유 |
+|------|-----------|------|
+| 네트워크 격리 | ❌ 포기 | vsomeip SOME/IP 멀티캐스트 → `--network=host` 필수 |
+| 디스플레이 격리 | ❌ 포기 | Wayland 소켓(`/run/user/1000`) 공유 마운트 필수 |
+| **자원 경계 (cgroup)** | ✅ 핵심 | HU OOM이 IC 앱에 전파되지 않도록 메모리 풀 분리 |
+| **이미지 단위 배포** | ✅ 핵심 | 앱+라이브러리를 통째로 교체, 이전 태그로 즉시 롤백 |
+| **개발 독립성** | ✅ 핵심 | leo(HU) / chang(IC) 이미지 분리, 서로 영향 없음 |
+| **오케스트레이션** | ✅ 핵심 | docker-compose로 컨테이너 재시작·순서·OTA 롤백 자동화 |
+
+
+#### 확정된 컨테이너 구조
+
+```
+[호스트 — 절대 컨테이너화 안 함]
+  weston.service                    ← Wayland 인프라 (wayland-1 소켓)
+  vsomeip-routing-manager.service   ← SOME/IP 인프라 (enP8p1s0 멀티캐스트)
+
+[IC 그룹 — chang 담당, --memory=256m]
+  ic-compositor      → docker: ic-compositor:버전
+  speedometer-app    → docker: ic-speedometer:버전
+  batterymeter-app   → docker: ic-batterymeter:버전
+  gearstate-app      → docker: ic-gearstate:버전
+
+[HU 그룹 — leo 담당, --memory=512m]
+  unified-compositor → docker: hu-compositor:버전
+  gearapp            → docker: hu-gearapp:버전
+  homescreenapp      → docker: hu-homescreen:버전
+  mediaapp           → docker: hu-media:버전
+  ambientapp         → docker: hu-ambient:버전
+```
+
+> **앱별 단독 이미지** (덩어리 아님): `docker load hu-gearapp:1.0.1`로 gearapp만 OTA 가능.
+> docker-compose.yml은 실행 편의 도구이며 이미지 단위와 무관.
+
+#### 현재 Wayland 소켓 구조 (단일 compositor 기준)
+
+```
+weston (wayland-1 소켓 생성)
+  └── unified-compositor (wayland-1 클라이언트, wayland-2 서버 소켓 생성)
+        ├── IC 앱 3개 (WAYLAND_DISPLAY=wayland-2)
+        └── HU 앱 4개 (WAYLAND_DISPLAY=wayland-2)
+
+컨테이너 마운트 필수:
+  -v /run/user/1000:/run/user/1000
+  --user 1000:1000
+  -e WAYLAND_DISPLAY=wayland-2
+  -e XDG_RUNTIME_DIR=/run/user/1000
+  --network=host
+  -e VSOMEIP_CONFIGURATION=...
+```
+
+#### OTA 이중 구조 확정
+
+```
+OS 레이어:  SWUpdate A/B 슬롯 → 커널/rootfs 변경 시 (재부팅 필요)
+앱 레이어:  Docker 이미지 교체 → 앱/라이브러리 변경 시 (재부팅 없음)
+```
+
+이는 Tesla, AGL, SOAFEE(Arm+BMW/Toyota/GM) 표준과 동일한 이중 구조.
+
+### 3.2 SWUpdate A/B 빌드 완료 ✅ (2026-03-06)
+
+**meta-seame-ota 레이어 신설** (커밋 `bc240a74`):
+
+```
+layers/meta-seame-ota/conf/layer.conf:
+  LAYERDEPENDS_meta-seame-ota = "core tegra swupdate"
+  USE_REDUNDANT_FLASH_LAYOUT = "1"    ← A/B 파티션 자동 구성
+  IMAGE_INSTALL:append = " swupdate"
+  IMAGE_FSTYPES:append = " tar.gz"
+```
+
+**빌드 결과:**
+```
+bitbake swupdate-image-tegra
+→ 8344/8344 tasks succeeded
+→ demo-image-base-jetson-orin-nano-devkit.swu (451MB)
+→ demo-image-base-jetson-orin-nano-devkit.tegraflash.tar.gz (480MB)
+```
+
+**Jetson 복원 사고 및 복구 (2026-03-06):**
+
+SWUpdate 빌드 테스트를 위해 `demo-image-base`를 `jetson-flash-2`에 잘못 압축 해제 →
+Jetson 화면 "신호 없음". `seame-headunit-image-jetson-orin-nano-devkit.rootfs-20260305141747.tegraflash.tar.gz`로
+Recovery 모드에서 `sudo ./doflash.sh` 재실행 → Exit Code 0, 정상 복원.
+
+| 커밋 | 내용 |
+|------|------|
+| `bc240a74` | feat: add meta-seame-ota layer with SWUpdate A/B config |
+
+---
+
+### 3.3 GearApp 컨테이너화 검증 PoC(Proof of Concept) ✅ (2026-03-07)
+
+**목표**: HU 앱 중 첫 번째인 GearApp을 컨테이너로 실행하고 화면 표시 확인
+
+#### 컨테이너 구조 확정
+
+`FROM scratch` + 호스트 라이브러리 마운트 방식:
+- 이미지에는 `/usr/bin/GearApp` + QML 파일만 포함 (~216KB)
+- Qt, vsomeip, CommonAPI 라이브러리는 호스트 `/usr/lib` 읽기 전용 마운트
+- 이유: Yocto 크로스컴파일 결과물을 그대로 사용, arm64 라이브러리 재빌드 불필요
+
+#### 필수 마운트 목록 (디버깅으로 확정)
+
+| 마운트 | 이유 |
+|--------|------|
+| `/run/user/1000:/run/user/1000` | wayland-2 소켓 (unified-compositor 접근) |
+| `/tmp:/tmp` | vsomeip IPC 소켓 (`/tmp/vsomeip-0`, `/tmp/vsomeip-10b`) |
+| `/usr/lib:/usr/lib:ro` | Qt5, vsomeip3, CommonAPI 라이브러리 |
+| `/usr/lib/plugins:/usr/lib/plugins:ro` | Qt Wayland 플러그인 (`libqwayland-generic.so` 등) |
+| `/usr/lib/qml:/usr/lib/qml:ro` | QML 모듈 (QtQuick, QtGraphicalEffects 등) |
+| `/usr/share/fonts:/usr/share/fonts:ro` | 폰트 렌더링 |
+| `/etc/fonts:/etc/fonts:ro` | fontconfig 설정 |
+| `/usr/share/X11:/usr/share/X11:ro` | xkb 키보드 레이아웃 (없으면 Qt Wayland 경고) |
+| `/var/cache/fontconfig:/var/cache/fontconfig` | 폰트 캐시 쓰기 (없으면 경고만, 동작은 함) |
+
+#### vsomeip 동작 확인
+
+- GearApp 서비스 파일의 `VSOMEIP_CONFIGURATION=/etc/vsomeip/routing_manager_ecu2.json` → 파일 없음
+- vsomeip가 `/tmp/vsomeip-0` 소켓으로 자동 fallback 연결
+- routing manager에 Client `010b`로 등록, VehicleControl 서비스 구독 정상
+- **결론**: 컨테이너 내에서도 vsomeip IPC 정상 동작 (설정 파일 불필요)
+- 상세 분석: `docs/VSOMEIP_YOCTO_ANALYSIS.md`
+
+#### 최종 실행 명령 (검증 완료)
+
+```bash
+docker run -d \
+  --name hu-gearapp \
+  --network=host \
+  -v /run/user/1000:/run/user/1000 \
+  -v /tmp:/tmp \
+  -v /usr/lib:/usr/lib:ro \
+  -v /usr/lib/plugins:/usr/lib/plugins:ro \
+  -v /usr/lib/qml:/usr/lib/qml:ro \
+  -v /usr/share/fonts:/usr/share/fonts:ro \
+  -v /etc/fonts:/etc/fonts:ro \
+  -v /usr/share/X11:/usr/share/X11:ro \
+  -v /var/cache/fontconfig:/var/cache/fontconfig \
+  --user 1000:1000 \
+  --memory=512m --memory-swap=512m \
+  -e WAYLAND_DISPLAY=wayland-2 \
+  -e XDG_RUNTIME_DIR=/run/user/1000 \
+  -e QT_QPA_PLATFORM=wayland \
+  -e QT_WAYLAND_DISABLE_WINDOWDECORATION=1 \
+  -e QSG_RENDER_LOOP=basic \
+  -e QT_QUICK_BACKEND=software \
+  -e LD_LIBRARY_PATH=/usr/lib \
+  -e QT_PLUGIN_PATH=/usr/lib/plugins \
+  -e QML2_IMPORT_PATH=/usr/lib/qml \
+  -e VSOMEIP_APPLICATION_NAME=GearApp \
+  hu-gearapp:1.0.0
+```
+
+#### 결과
+
+- ✅ 컨테이너 실행 성공 (`docker ps` 상태 `running`)
+- ✅ vsomeip Client `010b` routing manager 등록 완료
+- ✅ VehicleControl 서비스 구독 및 Gear 이벤트 수신 (`Gear update: "P"`)
+- ✅ QML GUI 화면 표시 확인 (`(0, 0, 130, 1000)` Left Panel)
+- ✅ cgroup 메모리 제한 `--memory=512m` 적용
+
+#### 관련 파일
+
+| 파일 | 경로 |
+|------|------|
+| Dockerfile | `containers/hu-gearapp/Dockerfile` |
+| 빌드 스크립트 | `containers/hu-gearapp/build.sh` |
+| 실행 스크립트 | `containers/hu-gearapp/run.sh` |
+| vsomeip 분석 | `docs/VSOMEIP_YOCTO_ANALYSIS.md` |
 
 ---
 
