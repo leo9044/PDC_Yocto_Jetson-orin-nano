@@ -13,6 +13,8 @@ SRC_URI = " \
     file://asset/ \
     file://qml.qrc \
     file://homescreenapp.service \
+    file://config/vsomeip_homescreen.json \
+    file://config/commonapi_homescreen.ini \
 "
 
 S = "${WORKDIR}"
@@ -42,7 +44,12 @@ do_install:append() {
     if [ -d ${WORKDIR}/qml ]; then
         cp -r ${WORKDIR}/qml/* ${D}${datadir}/homescreenapp/qml/ || true
     fi
+
+    # vsomeip / CommonAPI 설정 파일
+    install -d ${D}${sysconfdir}/commonapi
+    install -m 0644 ${WORKDIR}/config/vsomeip_homescreen.json ${D}${sysconfdir}/commonapi/
+    install -m 0644 ${WORKDIR}/config/commonapi_homescreen.ini ${D}${sysconfdir}/commonapi/
 }
 
-FILES:${PN} += "${bindir}/HomeScreenApp ${datadir}/homescreenapp/"
+FILES:${PN} += "${bindir}/HomeScreenApp ${datadir}/homescreenapp/ ${sysconfdir}/commonapi/vsomeip_homescreen.json ${sysconfdir}/commonapi/commonapi_homescreen.ini"
 INSANE_SKIP:${PN} += "already-stripped"

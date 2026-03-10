@@ -13,6 +13,8 @@ SRC_URI = " \
     file://images/ \
     file://qml.qrc \
     file://ambientapp.service \
+    file://config/vsomeip_ambientapp.json \
+    file://config/commonapi_ambientapp.ini \
 "
 
 S = "${WORKDIR}"
@@ -42,7 +44,12 @@ do_install:append() {
     if [ -d ${WORKDIR}/qml ]; then
         cp -r ${WORKDIR}/qml/* ${D}${datadir}/ambientapp/qml/ || true
     fi
+
+    # vsomeip / CommonAPI 설정 파일
+    install -d ${D}${sysconfdir}/commonapi
+    install -m 0644 ${WORKDIR}/config/vsomeip_ambientapp.json ${D}${sysconfdir}/commonapi/
+    install -m 0644 ${WORKDIR}/config/commonapi_ambientapp.ini ${D}${sysconfdir}/commonapi/
 }
 
-FILES:${PN} += "${bindir}/AmbientApp ${datadir}/ambientapp/"
+FILES:${PN} += "${bindir}/AmbientApp ${datadir}/ambientapp/ ${sysconfdir}/commonapi/vsomeip_ambientapp.json ${sysconfdir}/commonapi/commonapi_ambientapp.ini"
 INSANE_SKIP:${PN} += "already-stripped"

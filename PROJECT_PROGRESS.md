@@ -453,6 +453,118 @@ docker run -d \
 
 ---
 
+### 3.4 HU 앱 전체 컨테이너화 + systemd 교체 ✅ (2026-03-09)
+
+**목표**: 나머지 HU 앱 3개 컨테이너화 + docker-compose 통합 + 부팅 자동 실행
+
+#### 완료 내용
+
+**이미지 빌드 (4개 앱 모두)**
+```
+hu-gearapp:1.0.0     203KB
+hu-homescreen:1.0.0  400KB
+hu-media:1.0.0       476KB
+hu-ambient:1.0.0     537KB
+```
+모두 `FROM scratch` 방식 — 바이너리+QML만 포함, 라이브러리는 호스트 마운트
+
+**docker-compose.yml 작성** (`/etc/hu-apps/docker-compose.yml`)
+- 앱 4개 공통 설정을 YAML 앵커(`x-hu-common`)로 관리
+- `restart: always` → 컨테이너 crash 시 자동 재시작
+- `mem_limit: 512m` → cgroup 메모리 한도
+
+**docker-compose 설치 (arm64 바이너리)**
+- Yocto `docker-moby`에 compose 플러그인 미포함 확인
+- 개발 PC에서 `docker-compose v2.24.6 linux/aarch64` 다운로드 후 scp 전송
+- `/usr/local/bin/docker-compose` → `/usr/bin/docker-compose` 심링크
+
+**hu-apps.service 설치** (기존 4개 서비스 대체)
+```
+기존: gearapp.service, homescreenapp.service, mediaapp.service, ambientapp.service
+교체: hu-apps.service (docker-compose up 단일 서비스)
+```
+- 기존 서비스 4개 `disable` 처리
+- `hu-apps.service` → `multi-user.target` 자동 시작
+
+#### 최종 확인
+```
+NAMES           STATUS         IMAGE
+hu-gearapp      Up 9 seconds   hu-gearapp:1.0.0
+hu-media        Up 9 seconds   hu-media:1.0.0
+hu-ambient      Up 9 seconds   hu-ambient:1.0.0
+hu-homescreen   Up 9 seconds   hu-homescreen:1.0.0
+```
+화면 표시 4개 앱 전부 정상 ✅
+
+#### 관련 파일
+
+| 파일 | 경로 |
+|------|------|
+| docker-compose | `containers/hu-apps/docker-compose.yml` |
+| systemd 서비스 | `containers/hu-apps/hu-apps.service` |
+| 빌드 스크립트 | `containers/hu-apps/build-all.sh` |
+| 설치 스크립트 | `containers/hu-apps/install.sh` |
+
+---
+
+### 3.5 vsomeip 설정 파일 정상화 ✅ (2026-03-09)
+
+#### 배경
+컨테이너 실행은 성공했지만 각 앱이 `VSOMEIP_CONFIGURATION` 없이 IPC fallback으로만 동작 중.
+이더넷 직결(192.168.1.x) 환경에서 RPi ↔ Jetson SOME/IP 외부 통신이 안 되는 상태였음.
+
+#### 원인 분석
+- Jetson IP: `192.168.1.101` (이더넷 `enP8p1s0`) — 이더넷 미연결 시 NO-CARRIER
+- routingmanagerd: `/etc/vsomeip/vsomeip-routing-manager.json` 사용 중, `unicast: 192.168.1.101` 바인딩
+- 각 앱: `VSOMEIP_CONFIGURATION` 미설정 → fallback으로 `/tmp/vsomeip-0` IPC만 사용
+- GitHub 원본(`routing_manager_ecu2.json`)과 실제 설치 파일의 `id` 불일치 (`0xFFFF` vs `0x0100`), `routing` 필드 누락
+
+#### 조치 내용
+
+**1. 앱별 vsomeip 설정 파일 신규 작성 (GitHub 원본 기반)**
+
+| 앱 | vsomeip 설정 | application id |
+|---|---|---|
+| GearApp | `vsomeip_gearapp.json` | `0x0100` |
+| HomeScreenApp | `vsomeip_homescreen.json` | `0x1400` |
+| MediaApp | `vsomeip_mediaapp.json` | `0x1236` |
+| AmbientApp | `vsomeip_ambientapp.json` | `0x0200` |
+
+**2. Yocto 레시피 4개 수정**
+- `SRC_URI`에 `config/vsomeip_*.json` + `config/commonapi_*.ini` 추가
+- `do_install`에 `/etc/commonapi/` 설치 코드 추가
+- `FILES`에 `/etc/commonapi/` 경로 추가
+- `bitbake gearapp homescreenapp mediaapp ambientapp` 빌드 완료
+
+**3. routing manager 설정 수정**
+- `vsomeip-routing-manager.json`: `id 0x0100 → 0xFFFF`, `"routing": "routingmanagerd"` 추가
+
+**4. docker-compose.yml 수정**
+- `/etc/commonapi:/etc/commonapi:ro` 마운트 추가
+- 각 앱에 `VSOMEIP_CONFIGURATION` + `COMMONAPI_CONFIG` 환경변수 추가
+
+#### 결과
+```
+VSOMEIP_CONFIGURATION: "/etc/commonapi/vsomeip_gearapp.json"  ✅
+Loading configuration file '/etc/commonapi/commonapi_gearapp.ini'         ✅
+Instantiating routing manager [Proxy]                                      ✅
+Client 010b successfully connected to routing ~> vsomeip-0                ✅
+VehicleControl service is now available!                                   ✅ RPi 서비스 발견
+```
+
+#### 관련 파일
+
+| 파일 | 경로 |
+|------|------|
+| GearApp vsomeip | `layers/meta-seame-headunit/recipes-apps/gearapp/files/config/vsomeip_gearapp.json` |
+| HomeScreenApp vsomeip | `layers/meta-seame-headunit/recipes-apps/homescreenapp/files/config/vsomeip_homescreen.json` |
+| MediaApp vsomeip | `layers/meta-seame-headunit/recipes-apps/mediaapp/files/config/vsomeip_mediaapp.json` |
+| AmbientApp vsomeip | `layers/meta-seame-headunit/recipes-apps/ambientapp/files/config/vsomeip_ambientapp.json` |
+| routing manager | `layers/meta-seame-headunit/recipes-middleware/vsomeip-service/files/vsomeip-routing-manager.json` |
+| docker-compose | `containers/hu-apps/docker-compose.yml` |
+
+---
+
 ## 다음 단계
 
 → `CONTAINER_OTA_ROADMAP.md` 참조

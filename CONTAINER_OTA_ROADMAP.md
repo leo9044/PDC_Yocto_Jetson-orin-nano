@@ -152,9 +152,9 @@ services:
 3. [x] wayland-2 소켓 마운트 + UID=1000 동작 확인 ✅
 4. [x] `hu-gearapp:1.0.0` 이미지 빌드 및 태깅 ✅
 5. [x] QML 화면 표시 확인 (`/usr/share/X11` 마운트로 xkb 경고 해결) ✅
-6. [ ] 나머지 3개 앱 컨테이너화 (homescreen, media, ambient)
-7. [ ] `docker-compose.yml` 작성 및 전체 HU 그룹 실행
-8. [ ] systemd 서비스를 docker-compose 기반으로 교체
+6. [x] 나머지 3개 앱 컨테이너화 (homescreen, media, ambient) ✅
+7. [x] `docker-compose.yml` 작성 및 전체 HU 그룹 실행 ✅
+8. [x] systemd 서비스를 docker-compose 기반으로 교체 (`hu-apps.service`) ✅
 
 ---
 
@@ -323,7 +323,7 @@ nvbootctrl mark-boot-successful
 
 ```
 Phase 3-0 ✅  Docker + cgroup v2 + IC 서비스 분리 완료
-Phase 3-1 🔄  leo: HU 앱 컨테이너화 (gearapp 단독 테스트부터)
+Phase 3-1 ✅  leo: HU 앱 4개 컨테이너화 + docker-compose + systemd 교체 완료
 Phase 3-2 🔲  chang: IC 앱 컨테이너화
 Phase 3-3 🔲  공동: 통합 검증 (단일 compositor + 전체 컨테이너)
 Phase 4-1 🔲  leo: RPi 앱 레벨 OTA → A/B rootfs OTA

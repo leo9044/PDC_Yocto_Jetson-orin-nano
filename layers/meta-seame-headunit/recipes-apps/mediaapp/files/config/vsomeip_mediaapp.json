@@ -9,11 +9,17 @@
     },
     "applications": [
         {
-            "name": "routingmanagerd",
-            "id": "0xFFFF"
+            "name": "MediaApp",
+            "id": "0x1236"
         }
     ],
-    "routing": "routingmanagerd",
+    "services": [
+        {
+            "service": "0x1235",
+            "instance": "0x5679",
+            "unreliable": "30509"
+        }
+    ],
     "service-discovery": {
         "enable": "true",
         "multicast": "224.244.224.245",

@@ -2,18 +2,35 @@
     "unicast": "192.168.1.101",
     "netmask": "255.255.255.0",
     "logging": {
-        "level": "info",
+        "level": "debug",
         "console": "true",
-        "file": { "enable": "false" },
+        "file": { "enable": "false", "path": "/tmp/vsomeip.log" },
         "dlt": "false"
     },
     "applications": [
         {
-            "name": "routingmanagerd",
-            "id": "0xFFFF"
+            "name": "AmbientApp",
+            "id": "0x0200"
         }
     ],
-    "routing": "routingmanagerd",
+    "services": [
+        {
+            "service": "0x1236",
+            "instance": "0x567a",
+            "unreliable": "30510"
+        }
+    ],
+    "clients": [
+        {
+            "service": "0x1234",
+            "instance": "0x5678",
+            "unreliable": "30501"
+        },
+        {
+            "service": "0x1235",
+            "instance": "0x5679"
+        }
+    ],
     "service-discovery": {
         "enable": "true",
         "multicast": "224.244.224.245",

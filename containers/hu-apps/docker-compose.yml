@@ -1,0 +1,117 @@
+# HU 앱 4개 docker-compose
+# 위치: /etc/hu-apps/docker-compose.yml (Jetson)
+#
+# 실행: docker compose -f /etc/hu-apps/docker-compose.yml up -d
+# 중지: docker compose -f /etc/hu-apps/docker-compose.yml down
+# 단독 업데이트: docker compose ... up -d --no-deps hu-gearapp
+
+x-hu-common: &hu-common
+  network_mode: host
+  user: "1000:1000"
+  restart: always
+  mem_limit: 512m
+  memswap_limit: 512m
+  volumes:
+    - /run/user/1000:/run/user/1000
+    - /tmp:/tmp
+    - /usr/lib:/usr/lib:ro
+    - /usr/lib/plugins:/usr/lib/plugins:ro
+    - /usr/lib/qml:/usr/lib/qml:ro
+    - /usr/share/fonts:/usr/share/fonts:ro
+    - /etc/fonts:/etc/fonts:ro
+    - /usr/share/X11:/usr/share/X11:ro
+    - /var/cache/fontconfig:/var/cache/fontconfig
+    - /etc/commonapi:/etc/commonapi:ro
+  environment:
+    WAYLAND_DISPLAY: wayland-2
+    XDG_RUNTIME_DIR: /run/user/1000
+    QT_QPA_PLATFORM: wayland
+    QT_WAYLAND_DISABLE_WINDOWDECORATION: "1"
+    QSG_RENDER_LOOP: basic
+    QT_QUICK_BACKEND: software
+    QT_QPA_FONTDIR: /usr/share/fonts
+    FONTCONFIG_FILE: /etc/fonts/fonts.conf
+    LD_LIBRARY_PATH: /usr/lib
+    QT_PLUGIN_PATH: /usr/lib/plugins
+    QML2_IMPORT_PATH: /usr/lib/qml
+
+services:
+  hu-gearapp:
+    <<: *hu-common
+    image: hu-gearapp:1.0.0
+    container_name: hu-gearapp
+    environment:
+      WAYLAND_DISPLAY: wayland-2
+      XDG_RUNTIME_DIR: /run/user/1000
+      QT_QPA_PLATFORM: wayland
+      QT_WAYLAND_DISABLE_WINDOWDECORATION: "1"
+      QSG_RENDER_LOOP: basic
+      QT_QUICK_BACKEND: software
+      QT_QPA_FONTDIR: /usr/share/fonts
+      FONTCONFIG_FILE: /etc/fonts/fonts.conf
+      LD_LIBRARY_PATH: /usr/lib
+      QT_PLUGIN_PATH: /usr/lib/plugins
+      QML2_IMPORT_PATH: /usr/lib/qml
+      VSOMEIP_APPLICATION_NAME: GearApp
+      VSOMEIP_CONFIGURATION: /etc/commonapi/vsomeip_gearapp.json
+      COMMONAPI_CONFIG: /etc/commonapi/commonapi_gearapp.ini
+
+  hu-homescreen:
+    <<: *hu-common
+    image: hu-homescreen:1.0.0
+    container_name: hu-homescreen
+    environment:
+      WAYLAND_DISPLAY: wayland-2
+      XDG_RUNTIME_DIR: /run/user/1000
+      QT_QPA_PLATFORM: wayland
+      QT_WAYLAND_DISABLE_WINDOWDECORATION: "1"
+      QSG_RENDER_LOOP: basic
+      QT_QUICK_BACKEND: software
+      QT_QPA_FONTDIR: /usr/share/fonts
+      FONTCONFIG_FILE: /etc/fonts/fonts.conf
+      LD_LIBRARY_PATH: /usr/lib
+      QT_PLUGIN_PATH: /usr/lib/plugins
+      QML2_IMPORT_PATH: /usr/lib/qml
+      VSOMEIP_APPLICATION_NAME: HomeScreenApp
+      VSOMEIP_CONFIGURATION: /etc/commonapi/vsomeip_homescreen.json
+      COMMONAPI_CONFIG: /etc/commonapi/commonapi_homescreen.ini
+
+  hu-media:
+    <<: *hu-common
+    image: hu-media:1.0.0
+    container_name: hu-media
+    environment:
+      WAYLAND_DISPLAY: wayland-2
+      XDG_RUNTIME_DIR: /run/user/1000
+      QT_QPA_PLATFORM: wayland
+      QT_WAYLAND_DISABLE_WINDOWDECORATION: "1"
+      QSG_RENDER_LOOP: basic
+      QT_QUICK_BACKEND: software
+      QT_QPA_FONTDIR: /usr/share/fonts
+      FONTCONFIG_FILE: /etc/fonts/fonts.conf
+      LD_LIBRARY_PATH: /usr/lib
+      QT_PLUGIN_PATH: /usr/lib/plugins
+      QML2_IMPORT_PATH: /usr/lib/qml
+      VSOMEIP_APPLICATION_NAME: MediaApp
+      VSOMEIP_CONFIGURATION: /etc/commonapi/vsomeip_mediaapp.json
+      COMMONAPI_CONFIG: /etc/commonapi/commonapi_mediaapp.ini
+
+  hu-ambient:
+    <<: *hu-common
+    image: hu-ambient:1.0.0
+    container_name: hu-ambient
+    environment:
+      WAYLAND_DISPLAY: wayland-2
+      XDG_RUNTIME_DIR: /run/user/1000
+      QT_QPA_PLATFORM: wayland
+      QT_WAYLAND_DISABLE_WINDOWDECORATION: "1"
+      QSG_RENDER_LOOP: basic
+      QT_QUICK_BACKEND: software
+      QT_QPA_FONTDIR: /usr/share/fonts
+      FONTCONFIG_FILE: /etc/fonts/fonts.conf
+      LD_LIBRARY_PATH: /usr/lib
+      QT_PLUGIN_PATH: /usr/lib/plugins
+      QML2_IMPORT_PATH: /usr/lib/qml
+      VSOMEIP_APPLICATION_NAME: AmbientApp
+      VSOMEIP_CONFIGURATION: /etc/commonapi/vsomeip_ambientapp.json
+      COMMONAPI_CONFIG: /etc/commonapi/commonapi_ambientapp.ini

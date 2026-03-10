@@ -14,6 +14,8 @@ SRC_URI = " \
     file://images/ \
     file://qml.qrc \
     file://mediaapp.service \
+    file://config/vsomeip_mediaapp.json \
+    file://config/commonapi_mediaapp.ini \
 "
 
 S = "${WORKDIR}"
@@ -43,7 +45,12 @@ do_install:append() {
     if [ -d ${WORKDIR}/qml ]; then
         cp -r ${WORKDIR}/qml/* ${D}${datadir}/mediaapp/qml/ || true
     fi
+
+    # vsomeip / CommonAPI 설정 파일
+    install -d ${D}${sysconfdir}/commonapi
+    install -m 0644 ${WORKDIR}/config/vsomeip_mediaapp.json ${D}${sysconfdir}/commonapi/
+    install -m 0644 ${WORKDIR}/config/commonapi_mediaapp.ini ${D}${sysconfdir}/commonapi/
 }
 
-FILES:${PN} += "${bindir}/MediaApp ${datadir}/mediaapp/"
+FILES:${PN} += "${bindir}/MediaApp ${datadir}/mediaapp/ ${sysconfdir}/commonapi/vsomeip_mediaapp.json ${sysconfdir}/commonapi/commonapi_mediaapp.ini"
 INSANE_SKIP:${PN} += "already-stripped"

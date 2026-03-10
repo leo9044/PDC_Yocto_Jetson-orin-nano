@@ -9,10 +9,11 @@
     },
     "applications": [
         {
-            "name": "routingmanagerd",
-            "id": "0xFFFF"
+            "name": "HomeScreenApp",
+            "id": "0x1400"
         }
     ],
+    "services": [],
     "routing": "routingmanagerd",
     "service-discovery": {
         "enable": "true",

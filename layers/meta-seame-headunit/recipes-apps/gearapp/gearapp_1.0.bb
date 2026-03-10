@@ -12,6 +12,8 @@ SRC_URI = " \
     file://qml/ \
     file://qml.qrc \
     file://gearapp.service \
+    file://config/vsomeip_gearapp.json \
+    file://config/commonapi_gearapp.ini \
 "
 
 S = "${WORKDIR}"
@@ -44,11 +46,18 @@ do_install:append() {
     if [ -d ${WORKDIR}/qml ]; then
         cp -r ${WORKDIR}/qml/* ${D}${datadir}/gearapp/qml/ || true
     fi
+
+    # vsomeip / CommonAPI 설정 파일
+    install -d ${D}${sysconfdir}/commonapi
+    install -m 0644 ${WORKDIR}/config/vsomeip_gearapp.json ${D}${sysconfdir}/commonapi/
+    install -m 0644 ${WORKDIR}/config/commonapi_gearapp.ini ${D}${sysconfdir}/commonapi/
 }
 
 FILES:${PN} += " \
     ${bindir}/GearApp \
     ${datadir}/gearapp/ \
+    ${sysconfdir}/commonapi/vsomeip_gearapp.json \
+    ${sysconfdir}/commonapi/commonapi_gearapp.ini \
 "
 
 # CommonAPI 생성 코드 포함
