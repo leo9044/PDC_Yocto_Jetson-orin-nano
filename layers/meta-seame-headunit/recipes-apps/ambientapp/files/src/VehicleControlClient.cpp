@@ -68,42 +68,43 @@ void VehicleControlClient::setupEventSubscriptions()
     
     qDebug() << "📡 [AmbientApp] Subscribing to VehicleControl events...";
     
-    // Subscribe to gearChanged event
-    m_proxy->getGearChangedEvent().subscribe(
-        [this](std::string newGear, std::string oldGear, uint64_t timestamp) {
-            this->onGearChanged(newGear, oldGear, timestamp);
+    // Subscribe to gearDistanceChanged event
+    m_proxy->getGearDistanceChangedEvent().subscribe(
+        [this](std::string newGear, std::string oldGear, uint16_t distance, uint64_t timestamp) {
+            this->onGearChanged(newGear, oldGear, distance, timestamp);
         }
     );
-    
+
     // Subscribe to vehicleStateChanged event (for full state updates)
     m_proxy->getVehicleStateChangedEvent().subscribe(
-        [this](std::string gear, uint16_t speed, uint8_t battery, uint64_t timestamp) {
-            this->onVehicleStateChanged(gear, speed, battery, timestamp);
+        [this](std::string gear, uint16_t speed, uint16_t voltage, int16_t current, uint64_t timestamp) {
+            this->onVehicleStateChanged(gear, speed, voltage, current, timestamp);
         }
     );
     
     qDebug() << "✅ Event subscriptions setup complete";
 }
 
-void VehicleControlClient::onGearChanged(std::string newGear, std::string oldGear, uint64_t timestamp)
+void VehicleControlClient::onGearChanged(std::string newGear, std::string oldGear, uint16_t distance, uint64_t timestamp)
 {
     QString qNewGear = QString::fromStdString(newGear);
     QString qOldGear = QString::fromStdString(oldGear);
-    
-    qDebug() << "📡 [AmbientApp] gearChanged event:"
+
+    qDebug() << "📡 [AmbientApp] gearDistanceChanged event:"
              << qOldGear << "→" << qNewGear
+             << "distance:" << distance
              << "@ timestamp:" << timestamp;
-    
+
     if (m_currentGear != qNewGear) {
         m_currentGear = qNewGear;
         emit currentGearChanged(m_currentGear);
     }
 }
 
-void VehicleControlClient::onVehicleStateChanged(std::string gear, uint16_t speed, uint8_t battery, uint64_t timestamp)
+void VehicleControlClient::onVehicleStateChanged(std::string gear, uint16_t speed, uint16_t voltage, int16_t current, uint64_t timestamp)
 {
     QString qGear = QString::fromStdString(gear);
-    
+
     // Only care about gear changes for ambient lighting
     if (m_currentGear != qGear) {
         m_currentGear = qGear;

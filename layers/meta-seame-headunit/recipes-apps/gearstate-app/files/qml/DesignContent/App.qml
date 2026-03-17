@@ -13,10 +13,10 @@ Window {
     Item {
         id: gearSection
         anchors.fill: parent
-        
+
         // Bind to vehicleClient gearState
         property string currentGear: vehicleClient.gearState
-        
+
         // Gear gauge container (centered, scales with window)
         Item {
             id: gaugeContainer
@@ -25,7 +25,7 @@ Window {
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.verticalCenter: parent.verticalCenter
             anchors.verticalCenterOffset: -10
-            
+
             // Background gauge decoration (outer ring)
             Image {
                 id: gaugeSpeedometer_Ticks_outer
@@ -41,7 +41,7 @@ Window {
                 source: "qrc:/images/GaugeSpeedometer_Ticks1.png"
                 fillMode: Image.PreserveAspectFit
             }
-            
+
             // Gear letter display (centered in gauge)
             Text {
                 id: gearText
@@ -58,7 +58,7 @@ Window {
             }
         }
     }
-    
+
     // Connections to vehicleClient
     Connections {
         target: vehicleClient

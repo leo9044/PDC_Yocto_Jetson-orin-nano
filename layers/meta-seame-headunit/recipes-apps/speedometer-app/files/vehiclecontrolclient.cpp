@@ -2,11 +2,13 @@
 #include <QDebug>
 #include <QDateTime>
 #include <functional>
+#include <cmath>
 
 VehicleControlClient::VehicleControlClient(QObject *parent)
     : QObject(parent)
     , m_gearState("P")
     , m_speed(0)
+    , m_filteredSpeed(0.0f)
     , m_batteryLevel(0)
     , m_serviceAvailable(false)
 {
@@ -83,15 +85,15 @@ void VehicleControlClient::setupEventSubscriptions()
 
     // Subscribe to vehicleStateChanged event
     m_proxy->getVehicleStateChangedEvent().subscribe(
-        [this](std::string gear, uint16_t speed, uint8_t battery, uint64_t timestamp) {
-            this->onVehicleStateChanged(gear, speed, battery, timestamp);
+        [this](std::string gear, uint16_t speed, uint16_t voltage, int16_t current, uint64_t timestamp) {
+            this->onVehicleStateChanged(gear, speed, voltage, current, timestamp);
         }
     );
 
     qDebug() << "✅ Event subscriptions setup complete";
 }
 
-void VehicleControlClient::onVehicleStateChanged(std::string gear, uint16_t speed, uint8_t battery, uint64_t timestamp)
+void VehicleControlClient::onVehicleStateChanged(std::string gear, uint16_t speed, uint16_t voltage, int16_t current, uint64_t timestamp)
 {
     // Update gear state
     QString newGear = QString::fromStdString(gear);
@@ -100,19 +102,16 @@ void VehicleControlClient::onVehicleStateChanged(std::string gear, uint16_t spee
         emit gearStateChanged(m_gearState);
     }
 
-    // Update speed
-    if (m_speed != speed) {
-        m_speed = speed;
+    // Apply EMA filter to smooth speed (produces intermediate values between hardware steps)
+    m_filteredSpeed = SPEED_EMA_ALPHA * speed + (1.0f - SPEED_EMA_ALPHA) * m_filteredSpeed;
+    int smoothedSpeed = static_cast<int>(std::round(m_filteredSpeed));
+
+    if (m_speed != smoothedSpeed) {
+        m_speed = smoothedSpeed;
         emit speedChanged(m_speed);
 
         qDebug() << "📡 [Event] speedChanged:"
-                 << "Speed:" << m_speed << "km/h";
-    }
-
-    // Update battery level
-    if (m_batteryLevel != battery) {
-        m_batteryLevel = battery;
-        emit batteryLevelChanged(m_batteryLevel);
+                 << "raw:" << speed << "filtered:" << m_speed << "cm/s";
     }
 }
 

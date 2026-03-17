@@ -13,17 +13,17 @@ Window {
     Item {
         id: speedometerSection
         anchors.fill: parent
-        
+
         // Bind to vehicleClient speed
         property int currentSpeed: vehicleClient.speed
-        
+
         // Speedometer gauge container (centered, scales with window)
         Item {
             id: gaugeContainer
             width: Math.min(parent.width, parent.height)
             height: width
             anchors.centerIn: parent
-            
+
             // Background speed gauge (rotated 45°)
             Image {
                 id: gauge_Speed
@@ -60,7 +60,7 @@ Window {
                     origin.x: 130
                     origin.y: 33
                     angle: -45 + (speedometerSection.currentSpeed * 1.125)
-                    
+
                     Behavior on angle {
                         NumberAnimation {
                             duration: 100
@@ -69,7 +69,7 @@ Window {
                     }
                 }
             }
-            
+
             // Bottom panel overlay (INSIDE gaugeContainer, at bottom)
             Image {
                 id: bottomPanel
@@ -99,7 +99,7 @@ Window {
             }
         }
     }
-    
+
     // Connections to vehicleClient
     Connections {
         target: vehicleClient

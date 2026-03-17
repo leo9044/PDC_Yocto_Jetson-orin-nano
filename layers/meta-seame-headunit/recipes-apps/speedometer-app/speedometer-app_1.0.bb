@@ -58,8 +58,10 @@ do_install:append() {
     install -m 0755 ${B}/Speedometer_app ${D}${bindir}/
     
     # Install config files
+    install -d ${D}${sysconfdir}/vsomeip
+    install -m 0644 ${WORKDIR}/config/*.json ${D}${sysconfdir}/vsomeip/
     install -d ${D}${sysconfdir}/commonapi
-    install -m 0644 ${WORKDIR}/config/*.json ${D}${sysconfdir}/commonapi/
+    install -m 0644 ${WORKDIR}/config/*.ini  ${D}${sysconfdir}/commonapi/
     
     # Install systemd service
     install -d ${D}${systemd_system_unitdir}
@@ -71,6 +73,7 @@ SYSTEMD_AUTO_ENABLE = "enable"
 
 FILES:${PN} += " \
     ${bindir}/Speedometer_app \
-    ${sysconfdir}/commonapi/*.json \
+    ${sysconfdir}/vsomeip/*.json \
+    ${sysconfdir}/commonapi/*.ini \
     ${systemd_system_unitdir}/speedometer-app.service \
 "

@@ -13,10 +13,11 @@ Window {
     Item {
         id: batterySection
         anchors.fill: parent
-        
-        // Bind to vehicleClient batteryLevel
+
+        // Bind to vehicleClient batteryLevel and charging state
         property int batteryLevel: vehicleClient.batteryLevel
-        
+        property bool isCharging: vehicleClient.isCharging
+
         // Gauge container (centered, scales with window)
         Item {
             id: gaugeContainer
@@ -25,7 +26,7 @@ Window {
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.verticalCenter: parent.verticalCenter
             anchors.verticalCenterOffset: -10
-            
+
             // Background gauge decoration (outer ring)
             Image {
                 id: gaugeSpeedometer_Ticks_outer
@@ -41,7 +42,7 @@ Window {
                 source: "qrc:/images/GaugeSpeedometer_Ticks1.png"
                 fillMode: Image.PreserveAspectFit
             }
-            
+
             // Battery icon and fill container (centered in gauge)
             Item {
                 id: batteryIconContainer
@@ -49,15 +50,16 @@ Window {
                 height: 180
                 anchors.centerIn: parent
                 anchors.verticalCenterOffset: -10
-                
+
                 // Battery fill rectangle (grows from bottom)
                 Rectangle {
                     id: battery_fill
                     width: 68
-                    height: 110 * batterySection.batteryLevel / 100
+                    height: 115 * batterySection.batteryLevel / 100
                     anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.horizontalCenterOffset: -6
                     anchors.bottom: parent.bottom
-                    anchors.bottomMargin: 35
+                    anchors.bottomMargin: 29
                     z: 1
 
                     color: {
@@ -68,16 +70,16 @@ Window {
                         else
                             return Constants.batteryHighColor
                     }
-                    
+
                     radius: 2
-                    
+
                     Behavior on height {
                         NumberAnimation {
                             duration: 300
                             easing.type: Easing.OutQuad
                         }
                     }
-                    
+
                     Behavior on color {
                         ColorAnimation {
                             duration: 300
@@ -95,14 +97,29 @@ Window {
                     z: 2
                 }
 
-                // Battery percentage text (centered on icon)
+                // Bolt icon shown when charging (current > 100mA)
+                Image {
+                    id: bolt_icon
+                    anchors.centerIn: parent
+                    anchors.horizontalCenterOffset: -8
+                    width: 64
+                    height: 64
+                    source: "qrc:/images/bolt_icon.png"
+                    fillMode: Image.PreserveAspectFit
+                    visible: batterySection.isCharging
+                    z: 4
+                }
+
+                // Battery percentage text (hidden when charging)
                 Text {
                     id: battery_text
                     anchors.centerIn: parent
+                    anchors.horizontalCenterOffset: -8
                     anchors.verticalCenterOffset: -5
                     font: Constants.batteryPercentFont
                     color: Constants.textColor
                     text: batterySection.batteryLevel + "%"
+                    visible: !batterySection.isCharging
                     z: 3
                 }
             }

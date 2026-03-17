@@ -78,17 +78,17 @@ void VehicleControlClient::setupEventSubscriptions()
     
     qDebug() << "📡 Subscribing to VehicleControl events...";
     
-    // Subscribe to gearChanged event
-    m_proxy->getGearChangedEvent().subscribe(
-        [this](std::string newGear, std::string oldGear, uint64_t timestamp) {
-            this->onGearChanged(newGear, oldGear, timestamp);
+    // Subscribe to gearDistanceChanged event
+    m_proxy->getGearDistanceChangedEvent().subscribe(
+        [this](std::string newGear, std::string oldGear, uint16_t distance, uint64_t timestamp) {
+            this->onGearChanged(newGear, oldGear, distance, timestamp);
         }
     );
-    
+
     // Subscribe to vehicleStateChanged event
     m_proxy->getVehicleStateChangedEvent().subscribe(
-        [this](std::string gear, uint16_t speed, uint8_t battery, uint64_t timestamp) {
-            this->onVehicleStateChanged(gear, speed, battery, timestamp);
+        [this](std::string gear, uint16_t speed, uint16_t voltage, int16_t current, uint64_t timestamp) {
+            this->onVehicleStateChanged(gear, speed, voltage, current, timestamp);
         }
     );
     
@@ -137,51 +137,54 @@ void VehicleControlClient::requestGearChange(const QString& gear)
     emit gearChangeSuccess(gear);
 }
 
-void VehicleControlClient::onGearChanged(std::string newGear, std::string oldGear, uint64_t timestamp)
+void VehicleControlClient::onGearChanged(std::string newGear, std::string oldGear, uint16_t distance, uint64_t timestamp)
 {
     QString qNewGear = QString::fromStdString(newGear);
     QString qOldGear = QString::fromStdString(oldGear);
-    
-    qDebug() << "📡 [Event] gearChanged received:"
+
+    qDebug() << "📡 [Event] gearDistanceChanged received:"
              << qOldGear << "→" << qNewGear
+             << "distance:" << distance
              << "@ timestamp:" << timestamp;
-    
-    // 같은 기어여도 항상 emit (ECU1에서 확인한 상태를 GUI에 반영)
+
     m_currentGear = qNewGear;
     emit currentGearChanged(m_currentGear);
 }
 
-void VehicleControlClient::onVehicleStateChanged(std::string gear, uint16_t speed, uint8_t battery, uint64_t timestamp)
+void VehicleControlClient::onVehicleStateChanged(std::string gear, uint16_t speed, uint16_t voltage, int16_t current, uint64_t timestamp)
 {
     QString qGear = QString::fromStdString(gear);
-    
-    // Update state
+
+    // Convert voltage (mV) to battery percentage (3S LiPo: 9000mV=0%, 12600mV=100%)
+    float pct = (voltage / 1000.0f - 9.0f) / (12.6f - 9.0f) * 100.0f;
+    int battery = static_cast<int>(std::max(0.0f, std::min(100.0f, pct)));
+
     bool changed = false;
-    
+
     if (m_currentGear != qGear) {
         m_currentGear = qGear;
         emit currentGearChanged(m_currentGear);
         changed = true;
     }
-    
+
     if (m_currentSpeed != speed) {
         m_currentSpeed = speed;
         emit currentSpeedChanged(m_currentSpeed);
         changed = true;
     }
-    
+
     if (m_batteryLevel != battery) {
         m_batteryLevel = battery;
         emit batteryLevelChanged(m_batteryLevel);
         changed = true;
     }
-    
-    // Log periodically (every 10 updates = 1 second at 10Hz)
+
     static int updateCount = 0;
     if (changed || (++updateCount % 10 == 0)) {
         qDebug() << "📡 [Event] vehicleStateChanged:"
                  << "Gear:" << m_currentGear
                  << "Speed:" << m_currentSpeed << "km/h"
+                 << "Voltage:" << voltage << "mV"
                  << "Battery:" << m_batteryLevel << "%";
     }
 }

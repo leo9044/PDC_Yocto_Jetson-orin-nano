@@ -64,23 +64,56 @@ IMAGE_INSTALL:append = " \
     speedometer-app \
 "
 
-# Docker (meta-virtualization layer already in bblayers.conf)
-# DISTRO_FEATURES에 virtualization이 이미 포함되어 있어 레이어 추가 불필요
-# containerd, runc 등 의존성은 Yocto가 RDEPENDS로 자동 포함
-IMAGE_INSTALL:append = " docker-moby"
-
-# Network tools (already in demo-image-weston but ensure presence)
+# Network tools
 IMAGE_INSTALL:append = " \
     iproute2 \
     iputils \
+    openssh \
+    openssh-sftp-server \
+    wpa-supplicant \
+    linux-firmware \
+    iw \
+    networkmanager \
+    networkmanager-nmcli \
+    wifi-config \
+    eth-static-ip \
 "
 
-# Development tools (already added openssh in phase 1)
+# Development/debug tools
 IMAGE_INSTALL:append = " \
     htop \
     nano \
     vim \
+    sudo \
 "
 
-# systemd: graphical.target으로 부팅
+# Docker engine + IC/HU container setup
+IMAGE_INSTALL:append = " \
+    docker-moby \
+    ic-container-setup \
+    hu-container-setup \
+"
+
 SYSTEMD_DEFAULT_TARGET = "graphical.target"
+
+# Allow weston user (uid 1000) to run any command with sudo without password.
+setup_sudo() {
+    install -d ${IMAGE_ROOTFS}/etc/sudoers.d
+    echo "weston ALL=(ALL) NOPASSWD: ALL" > ${IMAGE_ROOTFS}/etc/sudoers.d/weston
+    chmod 440 ${IMAGE_ROOTFS}/etc/sudoers.d/weston
+}
+ROOTFS_POSTPROCESS_COMMAND += "setup_sudo; "
+
+# Pre-create fontconfig cache directory so fontconfig can write on first boot.
+generate_font_cache_dir() {
+    install -d ${IMAGE_ROOTFS}/var/cache/fontconfig
+}
+ROOTFS_POSTPROCESS_COMMAND += "generate_font_cache_dir; "
+
+# Mask systemd-networkd-wait-online — image uses NetworkManager, not networkd.
+# Without this, boot is delayed ~2 minutes waiting for all interfaces.
+mask_networkd_wait_online() {
+    install -d ${IMAGE_ROOTFS}${sysconfdir}/systemd/system
+    ln -sf /dev/null ${IMAGE_ROOTFS}${sysconfdir}/systemd/system/systemd-networkd-wait-online.service
+}
+ROOTFS_POSTPROCESS_COMMAND += "mask_networkd_wait_online; "

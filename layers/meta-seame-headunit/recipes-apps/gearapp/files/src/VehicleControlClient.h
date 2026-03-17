@@ -64,8 +64,8 @@ private:
     
     // Event subscriptions
     void setupEventSubscriptions();
-    void onGearChanged(std::string newGear, std::string oldGear, uint64_t timestamp);
-    void onVehicleStateChanged(std::string gear, uint16_t speed, uint8_t battery, uint64_t timestamp);
+    void onGearChanged(std::string newGear, std::string oldGear, uint16_t distance, uint64_t timestamp);
+    void onVehicleStateChanged(std::string gear, uint16_t speed, uint16_t voltage, int16_t current, uint64_t timestamp);
     void onAvailabilityChanged(CommonAPI::AvailabilityStatus status);
 };
 

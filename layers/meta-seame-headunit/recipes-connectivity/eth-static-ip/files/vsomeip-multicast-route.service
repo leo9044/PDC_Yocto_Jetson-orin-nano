@@ -1,0 +1,12 @@
+[Unit]
+Description=Add multicast route for vsomeip service discovery
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/sbin/ip route add 224.0.0.0/4 dev enP8p1s0
+
+[Install]
+WantedBy=multi-user.target

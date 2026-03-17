@@ -1,0 +1,88 @@
+[Unit]
+Description=IC Cluster Container (Safety-Critical Domain)
+# Docker daemon must be up first.
+# vsomeip routing manager for IPC.
+# unified-compositor.service creates the wayland-2 socket IC apps connect to.
+After=docker.service vsomeip-routing-manager.service unified-compositor.service
+Requires=docker.service vsomeip-routing-manager.service
+Wants=unified-compositor.service
+
+# Prevent native IC app services from running alongside the container.
+# ic-compositor.service would also try to create wayland-2, conflicting with UnifiedCompositor.
+Conflicts=ic-compositor.service gearstate-app.service speedometer-app.service batterymeter-app.service
+
+[Service]
+Type=simple
+User=root
+
+# Step 1: Build the image on first boot if it does not exist yet
+ExecStartPre=/bin/sh -c '/usr/bin/build-ic-container.sh'
+
+# Step 2: Wait for wayland-2 socket — created by host UnifiedCompositor (Option B2)
+ExecStartPre=/bin/sh -c \
+    'for i in $(seq 1 30); do \
+         test -S /run/user/1000/wayland-2 && exit 0; \
+         sleep 1; \
+     done; \
+     echo "wayland-2 socket not found (is unified-compositor running?)"; exit 1'
+
+# Step 3: Clean up any leftover container from a previous run
+ExecStartPre=-/usr/bin/docker rm -f ic-cluster
+
+# ── docker run cgroup flags ────────────────────────────────────────────────
+# --cpuset-cpus  → dedicates cores 0,1 to IC (cpuset cgroup controller)
+# --cpu-shares   → relative CPU weight; IC=1024 (highest priority)
+#
+# No GPU devices needed: IC apps are plain Wayland clients using wl_shm.
+# UnifiedCompositor on the host does the actual GPU rendering.
+#
+# Volume mounts:
+#   /run/user/1000  → wayland-2 socket (UnifiedCompositor) + vsomeip sockets
+#   /tmp            → vsomeip Unix domain sockets under /tmp/vsomeip-*
+#   /usr/lib        → Qt5, vsomeip, boost, commonapi shared libs
+#   /usr/lib/plugins → Qt5 platform plugins (wayland, etc.)
+#   /usr/lib/qml    → Qt5 QML import modules
+#   /usr/share/fonts → fonts for Qt text rendering
+#   /etc/fonts      → fontconfig configuration
+#   /usr/share/X11  → xkb keyboard layout data (xkbcommon)
+ExecStart=/usr/bin/docker run \
+    --name ic-cluster \
+    --rm \
+    --network=host \
+    --user=1000:1000 \
+    --cpuset-cpus=0,1 \
+    --cpu-shares=1024 \
+    --memory-reservation=512m \
+    -v /run/user/1000:/run/user/1000 \
+    -v /tmp:/tmp \
+    -v /usr/lib:/usr/lib:ro \
+    -v /usr/lib/plugins:/usr/lib/plugins:ro \
+    -v /usr/lib/qml:/usr/lib/qml:ro \
+    -v /usr/share/fonts:/usr/share/fonts:ro \
+    -v /etc/fonts:/etc/fonts:ro \
+    -v /usr/share/X11:/usr/share/X11:ro \
+    -e WAYLAND_DISPLAY=wayland-2 \
+    -e XDG_RUNTIME_DIR=/run/user/1000 \
+    -e QT_QPA_PLATFORM=wayland \
+    -e QT_WAYLAND_DISABLE_WINDOWDECORATION=1 \
+    -e QSG_RENDER_LOOP=basic \
+    -e QT_QUICK_BACKEND=software \
+    -e QT_WAYLAND_HARDWARE_INTEGRATION=none \
+    -e QT_QPA_FONTDIR=/usr/share/fonts/truetype \
+    -e FONTCONFIG_FILE=/etc/fonts/fonts.conf \
+    -e LD_LIBRARY_PATH=/usr/lib \
+    -e QT_PLUGIN_PATH=/usr/lib/plugins \
+    -e QML2_IMPORT_PATH=/usr/lib/qml \
+    ic-cluster:latest
+
+ExecStop=/usr/bin/docker stop ic-cluster
+
+# Lower OOM score so the kernel kills HU or other processes before IC.
+# docker-moby rejects --oom-score-adj=-1000, so we set it manually after start.
+ExecStartPost=/bin/sh -c 'i=0; while [ $i -lt 10 ]; do PID=$(docker inspect --format "{{.State.Pid}}" ic-cluster 2>/dev/null); [ -n "$PID" ] && [ "$PID" != "0" ] && echo -1000 > /proc/$PID/oom_score_adj && exit 0; sleep 1; i=$((i+1)); done'
+
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=graphical.target
