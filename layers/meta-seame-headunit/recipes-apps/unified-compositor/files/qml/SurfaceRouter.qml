@@ -22,6 +22,7 @@ QtObject {
     property var homeScreenAppContainer: null
     property var mediaAppContainer:      null
     property var ambientAppContainer:    null
+    property var pdcAppContainer:        null
 
     // ── IC containers ──
     property var gearStateContainer:     null
@@ -48,6 +49,10 @@ QtObject {
             // return Qt.size(130, 520)   // TEST landscape
             return Qt.size(130, 604)    // TARGET portrait
 
+        // PDCApp — same size as main content area
+        if (identifier === "PDCApp" || id.includes("pdc") || id.includes("park"))
+            return Qt.size(470, 524)    // TARGET portrait
+
         // HU main area — TEST: 614×520 / TARGET: 470×524
         // return Qt.size(614, 520)       // TEST landscape
         return Qt.size(470, 524)        // TARGET portrait
@@ -72,6 +77,9 @@ QtObject {
             return mediaAppContainer
         if (identifier === "AmbientApp" || id.includes("ambient"))
             return ambientAppContainer
+
+        if (identifier === "PDCApp" || id.includes("pdc") || id.includes("park"))
+            return pdcAppContainer
 
         return homeScreenAppContainer
     }
@@ -131,6 +139,10 @@ QtObject {
         }
         if (identifier === "AmbientApp" || id.includes("ambient")) {
             if (ambientAppContainer) assignToContainer(chrome, ambientAppContainer, "HU AmbientPage")
+            return
+        }
+        if (identifier === "PDCApp" || id.includes("pdc") || id.includes("park")) {
+            if (pdcAppContainer) assignToContainer(chrome, pdcAppContainer, "PDC Overlay")
             return
         }
 

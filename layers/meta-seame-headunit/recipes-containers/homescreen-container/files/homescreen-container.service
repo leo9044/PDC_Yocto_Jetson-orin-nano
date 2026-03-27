@@ -1,0 +1,58 @@
+[Unit]
+Description=homescreen container (HU domain - Standard)
+After=docker.service vsomeip-routing-manager.service unified-compositor.service
+Requires=docker.service vsomeip-routing-manager.service
+Wants=unified-compositor.service
+
+[Service]
+Type=simple
+User=root
+ExecStartPre=/bin/sh -c '/usr/bin/build-homescreen-container.sh'
+ExecStartPre=-/usr/bin/docker rm -f homescreen
+
+# cgroup resource allocation
+# --cpuset-cpus      : Cores 4,5 only - cores 2,3 reserved exclusively for PDCApp
+# --cpu-shares       : 512/1024 = medium scheduling priority
+# --memory           : hard ceiling - OOM triggered if exceeded
+# --memory-swap=memory: disables swap to prevent latency spikes
+# oom_score_adj 0 : set via ExecStartPost (see below)
+ExecStart=/usr/bin/docker run \
+    --name homescreen \
+    --rm \
+    --network=host \
+    --user=1000:1000 \
+    --cpuset-cpus=4,5 \
+    --cpu-shares=512 \
+    --memory=512m \
+    --memory-swap=512m \
+    -e VSOMEIP_APPLICATION_NAME=HomeScreenApp \
+    -e VSOMEIP_CONFIGURATION=/etc/commonapi/vsomeip_homescreen.json \
+    -e COMMONAPI_CONFIG=/etc/commonapi/commonapi_homescreen.ini \
+    -e WAYLAND_DISPLAY=wayland-2 \
+    -e XDG_RUNTIME_DIR=/run/user/1000 \
+    -e QT_QPA_PLATFORM=wayland \
+    -e QT_WAYLAND_DISABLE_WINDOWDECORATION=1 \
+    -e QSG_RENDER_LOOP=basic \
+    -e QT_QUICK_BACKEND=software \
+    -e QT_WAYLAND_HARDWARE_INTEGRATION=none \
+    -e QT_QPA_FONTDIR=/usr/share/fonts/truetype \
+    -e FONTCONFIG_FILE=/etc/fonts/fonts.conf \
+    -e LD_LIBRARY_PATH=/usr/lib \
+    -e QT_PLUGIN_PATH=/usr/lib/plugins \
+    -e QML2_IMPORT_PATH=/usr/lib/qml \
+    -v /run/user/1000:/run/user/1000 \
+    -v /tmp:/tmp \
+    -v /usr/lib:/usr/lib:ro \
+    -v /usr/lib/plugins:/usr/lib/plugins:ro \
+    -v /usr/lib/qml:/usr/lib/qml:ro \
+    -v /usr/share/fonts:/usr/share/fonts:ro \
+    -v /etc/fonts:/etc/fonts:ro \
+    -v /usr/share/X11:/usr/share/X11:ro \
+    homescreen:latest
+ExecStop=/usr/bin/docker stop homescreen
+
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=graphical.target

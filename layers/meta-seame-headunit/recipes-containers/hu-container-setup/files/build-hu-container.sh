@@ -30,7 +30,7 @@ mkdir -p $BUILD_DIR/rootfs/etc/commonapi
 # ── Binaries ──────────────────────────────────────────────────────────────────
 # No compositor inside this container (Option B2: UnifiedCompositor runs on host).
 # Only the 4 HU app binaries are needed.
-for BIN in GearApp MediaApp AmbientApp HomeScreenApp; do
+for BIN in GearApp MediaApp AmbientApp HomeScreenApp PDCApp; do
     if [ ! -f /usr/bin/$BIN ]; then
         echo "[HU build] ERROR: /usr/bin/$BIN not found"
         exit 1
@@ -56,7 +56,8 @@ for CFG in \
     vsomeip_gearapp.json    commonapi_gearapp.ini \
     vsomeip_mediaapp.json   commonapi_mediaapp.ini \
     vsomeip_ambientapp.json commonapi_ambientapp.ini \
-    vsomeip_homescreen.json commonapi_homescreen.ini; do
+    vsomeip_homescreen.json commonapi_homescreen.ini \
+    vsomeip_pdc.json        commonapi_pdc.ini; do
     if [ -f /etc/commonapi/$CFG ]; then
         cp /etc/commonapi/$CFG $BUILD_DIR/rootfs/etc/commonapi/
     fi

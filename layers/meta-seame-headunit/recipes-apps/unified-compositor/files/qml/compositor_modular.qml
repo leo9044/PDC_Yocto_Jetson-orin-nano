@@ -63,6 +63,15 @@ WaylandCompositor {
     ListModel { id: surfacesList }
     property alias surfaces: surfacesList
 
+    // Wire VehicleControlClient gear changes → PDC overlay visibility
+    Connections {
+        target: vehicleControlClient
+        function onCurrentGearChanged(gear) {
+            layout.isReverseGear = (gear === "R")
+            console.log("⚙️  Gear changed to:", gear, "— PDC overlay:", layout.isReverseGear)
+        }
+    }
+
     SurfaceRouter {
         id: surfaceRouter
         // HU containers
@@ -70,6 +79,7 @@ WaylandCompositor {
         homeScreenAppContainer: layout.homeScreenAppContainer
         mediaAppContainer:      layout.mediaAppContainer
         ambientAppContainer:    layout.ambientAppContainer
+        pdcAppContainer:        layout.pdcAppContainer
         // IC containers
         gearStateContainer:     layout.gearStateContainer
         speedometerContainer:   layout.speedometerContainer

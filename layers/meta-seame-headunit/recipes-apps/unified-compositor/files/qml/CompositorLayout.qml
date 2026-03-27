@@ -36,6 +36,7 @@ Item {
     property alias homeScreenAppContainer:  homeScreenAppContainer
     property alias mediaAppContainer:       mediaAppContainer
     property alias ambientAppContainer:     ambientAppContainer
+    property alias pdcAppContainer:         pdcAppContainer
 
     // ── IC containers ──
     property alias gearStateContainer:      gearStateContainer
@@ -44,6 +45,9 @@ Item {
 
     property alias surfaceCount: surfaceCountText.text
     property int currentPage: 0
+
+    // PDC overlay visibility — set to true when gear = "R"
+    property bool isReverseGear: false
 
     // ═══════════════════════════════════════════════════════
     // IC AREA
@@ -184,6 +188,7 @@ Item {
     Item {
         id: mainContentArea
         objectName: "mainContentArea"
+        z: root.isReverseGear ? 0 : 1  // Behind PDC overlay when reversing
         anchors.left: huGearPanel.right
         anchors.right: parent.right
         // ---- TARGET (portrait) ----
@@ -226,6 +231,37 @@ Item {
                 objectName: "ambientAppContainer"
                 anchors.fill: parent
             }
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // PDC OVERLAY — shown when gear = "R" (Reverse)
+    // Covers the main content area; PDCApp window is embedded here
+    // ═══════════════════════════════════════════════════════
+    Rectangle {
+        id: pdcOverlay
+        anchors.left: huGearPanel.right
+        anchors.right: parent.right
+        // ---- TARGET (portrait) ----
+        anchors.top: divider.bottom
+        anchors.bottom: huNavigationBar.top
+        anchors.margins: 8
+        color: "transparent"
+        z: root.isReverseGear ? 1 : 0
+        visible: opacity > 0
+        opacity: root.isReverseGear ? 1.0 : 0.0
+
+        Behavior on opacity {
+            NumberAnimation {
+                duration: 300
+                easing.type: Easing.InOutQuad
+            }
+        }
+
+        Item {
+            id: pdcAppContainer
+            objectName: "pdcAppContainer"
+            anchors.fill: parent
         }
     }
 

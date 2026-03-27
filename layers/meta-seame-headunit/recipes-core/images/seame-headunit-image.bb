@@ -54,6 +54,7 @@ IMAGE_INSTALL:append = " \
     mediaapp \
     ambientapp \
     homescreenapp \
+    pdcapp \
 "
 
 # SEAME IC Applications
@@ -87,11 +88,22 @@ IMAGE_INSTALL:append = " \
     sudo \
 "
 
-# Docker engine + IC/HU container setup
+# Docker engine + per-app containers (replaces ic-container-setup / hu-container-setup)
+# IC domain - Safety-Critical (cores 0,1 exclusive, oom=-1000)
 IMAGE_INSTALL:append = " \
     docker-moby \
-    ic-container-setup \
-    hu-container-setup \
+    gearstate-container \
+    speedometer-container \
+    batterymeter-container \
+"
+
+# HU domain - per-app containers (cores 4,5; pdcapp gets cores 2,3,4)
+IMAGE_INSTALL:append = " \
+    pdcapp-container \
+    gearapp-container \
+    homescreen-container \
+    mediaapp-container \
+    ambientapp-container \
 "
 
 SYSTEMD_DEFAULT_TARGET = "graphical.target"

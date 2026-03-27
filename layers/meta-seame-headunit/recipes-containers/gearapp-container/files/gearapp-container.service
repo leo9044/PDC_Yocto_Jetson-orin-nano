@@ -1,0 +1,67 @@
+[Unit]
+Description=gearapp container (HU domain - Safety-Relevant)
+After=docker.service vsomeip-routing-manager.service unified-compositor.service
+Requires=docker.service vsomeip-routing-manager.service
+Wants=unified-compositor.service
+
+[Service]
+Type=simple
+User=root
+ExecStartPre=/bin/sh -c '/usr/bin/build-gearapp-container.sh'
+ExecStartPre=-/usr/bin/docker rm -f gearapp
+
+# cgroup resource allocation
+# --cpuset-cpus      : Cores 4,5 only - cores 2,3 reserved exclusively for PDCApp
+# --cpu-shares       : 800/1024 = high scheduling priority
+# --memory           : hard ceiling - OOM triggered if exceeded
+# --memory-swap=memory: disables swap to prevent latency spikes
+# oom_score_adj -300 : set via ExecStartPost (see below)
+ExecStart=/usr/bin/docker run \
+    --name gearapp \
+    --rm \
+    --network=host \
+    --user=1000:1000 \
+    --cpuset-cpus=4,5 \
+    --cpu-shares=800 \
+    --memory=256m \
+    --memory-swap=256m \
+    -e VSOMEIP_APPLICATION_NAME=GearApp \
+    -e VSOMEIP_CONFIGURATION=/etc/commonapi/vsomeip_gearapp.json \
+    -e COMMONAPI_CONFIG=/etc/commonapi/commonapi_gearapp.ini \
+    -e WAYLAND_DISPLAY=wayland-2 \
+    -e XDG_RUNTIME_DIR=/run/user/1000 \
+    -e QT_QPA_PLATFORM=wayland \
+    -e QT_WAYLAND_DISABLE_WINDOWDECORATION=1 \
+    -e QSG_RENDER_LOOP=basic \
+    -e QT_QUICK_BACKEND=software \
+    -e QT_WAYLAND_HARDWARE_INTEGRATION=none \
+    -e QT_QPA_FONTDIR=/usr/share/fonts/truetype \
+    -e FONTCONFIG_FILE=/etc/fonts/fonts.conf \
+    -e LD_LIBRARY_PATH=/usr/lib \
+    -e QT_PLUGIN_PATH=/usr/lib/plugins \
+    -e QML2_IMPORT_PATH=/usr/lib/qml \
+    -v /run/user/1000:/run/user/1000 \
+    -v /tmp:/tmp \
+    -v /usr/lib:/usr/lib:ro \
+    -v /usr/lib/plugins:/usr/lib/plugins:ro \
+    -v /usr/lib/qml:/usr/lib/qml:ro \
+    -v /usr/share/fonts:/usr/share/fonts:ro \
+    -v /etc/fonts:/etc/fonts:ro \
+    -v /usr/share/X11:/usr/share/X11:ro \
+    gearapp:latest
+ExecStop=/usr/bin/docker stop gearapp
+
+# Set OOM score after container starts (docker-moby rejects --oom-score-adj directly).
+# -300: protected - safety-relevant
+ExecStartPost=/bin/sh -c 'i=0; while [ $i -lt 10 ]; do \
+    PID=$(docker inspect --format "{{.State.Pid}}" gearapp 2>/dev/null); \
+    [ -n "$PID" ] && [ "$PID" != "0" ] && \
+    echo -300 > /proc/$PID/oom_score_adj && \
+    echo "[gearapp] oom_score_adj=-300" && exit 0; \
+    sleep 1; i=$((i+1)); done; \
+    echo "[gearapp] WARNING: could not set oom_score_adj"'
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=graphical.target

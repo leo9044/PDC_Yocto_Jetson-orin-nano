@@ -70,6 +70,11 @@ restart_app HomeScreenApp /usr/bin/HomeScreenApp \
     VSOMEIP_APPLICATION_NAME=HomeScreenApp \
     COMMONAPI_CONFIG=/etc/commonapi/commonapi_homescreen.ini &
 
+restart_app PDCApp /usr/bin/PDCApp \
+    VSOMEIP_CONFIGURATION=/etc/commonapi/vsomeip_pdc.json \
+    VSOMEIP_APPLICATION_NAME=PDCApp \
+    COMMONAPI_CONFIG=/etc/commonapi/commonapi_pdc.ini &
+
 echo "[HU] All HU watchdogs started. Waiting..."
 wait
 echo "[HU] All watchdogs exited — tearing down HU cluster."
