@@ -16,21 +16,17 @@ int main(int argc, char *argv[])
         qputenv("VSOMEIP_APPLICATION_NAME", "PDCApp");
     }
 
-    // vsomeip config - check if already set by environment, otherwise use default
+    // vsomeip config
     if (qgetenv("VSOMEIP_CONFIGURATION").isEmpty()) {
-        QString appDir = QFileInfo("/proc/self/exe").absolutePath();
-        qputenv("VSOMEIP_CONFIGURATION",
-                (appDir + "/../../app/PDCApp/config/vsomeip_pdc.json").toLocal8Bit());
+        qputenv("VSOMEIP_CONFIGURATION", "/etc/commonapi/vsomeip_pdc.json");
     }
 
-    // commonapi config - check if already set by environment, otherwise use default
+    // commonapi config
     if (qgetenv("COMMONAPI_CONFIG").isEmpty()) {
-        QString appDir = QFileInfo("/proc/self/exe").absolutePath();
-        qputenv("COMMONAPI_CONFIG",
-                (appDir + "/../../app/PDCApp/config/commonapi_pdc.ini").toLocal8Bit());
+        qputenv("COMMONAPI_CONFIG", "/etc/commonapi/commonapi_pdc.ini");
     }
 
-    // Wayland settings - only set if not already configured
+    // Wayland settings
     if (qgetenv("XDG_RUNTIME_DIR").isEmpty()) {
         qputenv("XDG_RUNTIME_DIR", "/run/user/0");
     }
@@ -40,9 +36,8 @@ int main(int argc, char *argv[])
     if (qgetenv("QT_WAYLAND_DISABLE_WINDOWDECORATION").isEmpty()) {
         qputenv("QT_WAYLAND_DISABLE_WINDOWDECORATION", "1");
     }
-    if (qgetenv("WAYLAND_DISPLAY").isEmpty()) {
-        qputenv("WAYLAND_DISPLAY", "wayland-1");
-    }
+    // Always connect to the unified compositor socket, not Weston directly
+    qputenv("WAYLAND_DISPLAY", "wayland-2");
 
     QGuiApplication app(argc, argv);
     app.setApplicationName("PDCApp");

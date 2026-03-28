@@ -22,7 +22,7 @@ SRC_URI = " \
 
 S = "${WORKDIR}"
 
-inherit cmake_qt5
+inherit cmake_qt5 pkgconfig
 
 EXTRA_OECMAKE = " \
     -DCMAKE_BUILD_TYPE=Release \
@@ -48,4 +48,4 @@ FILES:${PN} += " \
     ${sysconfdir}/commonapi/commonapi_pdc.ini \
 "
 
-INSANE_SKIP:${PN} += "already-stripped"
+INSANE_SKIP:${PN} += "already-stripped rpaths buildpaths"

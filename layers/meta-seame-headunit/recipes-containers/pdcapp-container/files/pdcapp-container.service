@@ -24,6 +24,8 @@ ExecStart=/usr/bin/docker run \
     --rm \
     --network=host \
     --user=1000:1000 \
+    --group-add 44 \
+    --privileged \
     --cpuset-cpus=2,3,4 \
     --cpu-shares=1024 \
     --memory=512m \
@@ -40,12 +42,17 @@ ExecStart=/usr/bin/docker run \
     -e QT_WAYLAND_HARDWARE_INTEGRATION=none \
     -e QT_QPA_FONTDIR=/usr/share/fonts/truetype \
     -e FONTCONFIG_FILE=/etc/fonts/fonts.conf \
-    -e LD_LIBRARY_PATH=/usr/lib \
+    -e LD_LIBRARY_PATH=/usr/lib:/usr/local/cuda-12.6/lib \
     -e QT_PLUGIN_PATH=/usr/lib/plugins \
     -e QML2_IMPORT_PATH=/usr/lib/qml \
+    -e GST_PLUGIN_SYSTEM_PATH=/usr/lib/gstreamer-1.0 \
+    -e GST_PLUGIN_SCANNER=/usr/libexec/gstreamer-1.0/gst-plugin-scanner \
+    -e GST_REGISTRY=/tmp/gstreamer-registry.bin \
     -v /run/user/1000:/run/user/1000 \
     -v /tmp:/tmp \
     -v /usr/lib:/usr/lib:ro \
+    -v /usr/libexec:/usr/libexec:ro \
+    -v /usr/local/cuda-12.6:/usr/local/cuda-12.6:ro \
     -v /usr/lib/plugins:/usr/lib/plugins:ro \
     -v /usr/lib/qml:/usr/lib/qml:ro \
     -v /usr/share/fonts:/usr/share/fonts:ro \

@@ -69,26 +69,34 @@ Window {
         id: cameraGuide
         anchors.fill: parent
 
-        // Trapezoid tuned for 470x524 portrait window.
-        // Top (far/horizon): narrow convergence at 28-72% of width.
-        // Bottom (near/bumper): full width edge to edge.
-        readonly property real topLeftX: 0.28
-        readonly property real topRightX: 0.72
-        readonly property real bottomLeftX: 0.0
-        readonly property real bottomRightX: 1.0
-        readonly property real zone1End: 0.30
-        readonly property real zone2Start: 0.30
-        readonly property real zone2End: 0.63
-        readonly property real zone3Start: 0.63
+        // Trapezoid occupies the lower portion of the screen (typical real-car PDC style).
+        // Top of trap at ~40% down, bottom near screen edge.
+        // topLeftX/topRightX are the widths at trapTopY; bottomLeftX/bottomRightX at trapBottomY.
+        readonly property real trapTopY: 0.40
+        readonly property real trapBottomY: 0.96
+        readonly property real topLeftX: 0.38
+        readonly property real topRightX: 0.62
+        readonly property real bottomLeftX: 0.10
+        readonly property real bottomRightX: 0.90
+        readonly property real zone1End: trapTopY + (trapBottomY - trapTopY) * 0.33
+        readonly property real zone2Start: zone1End
+        readonly property real zone2End: trapTopY + (trapBottomY - trapTopY) * 0.67
+        readonly property real zone3Start: zone2End
 
-        function leftX(yFrac)  { return topLeftX  + (bottomLeftX  - topLeftX)  * yFrac }
-        function rightX(yFrac) { return topRightX + (bottomRightX - topRightX) * yFrac }
+        function leftX(yFrac) {
+            var t = (yFrac - trapTopY) / (trapBottomY - trapTopY)
+            return topLeftX + (bottomLeftX - topLeftX) * t
+        }
+        function rightX(yFrac) {
+            var t = (yFrac - trapTopY) / (trapBottomY - trapTopY)
+            return topRightX + (bottomRightX - topRightX) * t
+        }
 
         // Red zone guide (bottom third)
         Canvas {
             anchors.fill: parent
             opacity: (noSignal || distanceZone === "safe") ? 0.0
-                   : distanceZone === "red" ? 0.85 : 0.2
+                   : distanceZone === "red" ? 0.85 : 0.5
             Behavior on opacity { NumberAnimation { duration: 300 } }
             SequentialAnimation on opacity {
                 running: distanceZone === "red" && !noSignal
@@ -100,10 +108,10 @@ Window {
                 var ctx = getContext("2d"), w = width, h = height
                 ctx.clearRect(0, 0, w, h)
                 ctx.strokeStyle = "#FF0000"; ctx.lineWidth = 10; ctx.lineCap = "round"
-                var y1 = cameraGuide.zone3Start, y2 = 1.0, m = w * 0.07
-                ctx.beginPath(); ctx.moveTo(cameraGuide.leftX(y1)*w, y1*h);  ctx.lineTo(cameraGuide.leftX(y2)*w, y2*h);  ctx.stroke()
-                ctx.beginPath(); ctx.moveTo(cameraGuide.leftX(y1)*w, y1*h);  ctx.lineTo(cameraGuide.leftX(y1)*w+m, y1*h); ctx.stroke()
-                ctx.beginPath(); ctx.moveTo(cameraGuide.rightX(y1)*w, y1*h); ctx.lineTo(cameraGuide.rightX(y2)*w, y2*h);  ctx.stroke()
+                var y1 = cameraGuide.zone3Start, y2 = cameraGuide.trapBottomY, m = w * 0.07
+                ctx.beginPath(); ctx.moveTo(cameraGuide.leftX(y1)*w,  y1*h); ctx.lineTo(cameraGuide.leftX(y2)*w,  y2*h); ctx.stroke()
+                ctx.beginPath(); ctx.moveTo(cameraGuide.leftX(y1)*w,  y1*h); ctx.lineTo(cameraGuide.leftX(y1)*w+m, y1*h); ctx.stroke()
+                ctx.beginPath(); ctx.moveTo(cameraGuide.rightX(y1)*w, y1*h); ctx.lineTo(cameraGuide.rightX(y2)*w, y2*h); ctx.stroke()
                 ctx.beginPath(); ctx.moveTo(cameraGuide.rightX(y1)*w, y1*h); ctx.lineTo(cameraGuide.rightX(y1)*w-m, y1*h); ctx.stroke()
             }
         }
@@ -113,7 +121,7 @@ Window {
             anchors.fill: parent
             opacity: (noSignal || distanceZone === "safe") ? 0.0
                    : distanceZone === "yellow" ? 0.85
-                   : distanceZone === "green"  ? 0.2 : 0.0
+                   : distanceZone === "green"  ? 0.5 : 0.0
             Behavior on opacity { NumberAnimation { duration: 300 } }
             SequentialAnimation on opacity {
                 running: distanceZone === "yellow" && !noSignal
@@ -126,9 +134,9 @@ Window {
                 ctx.clearRect(0, 0, w, h)
                 ctx.strokeStyle = "#FFBB00"; ctx.lineWidth = 10; ctx.lineCap = "round"
                 var y1 = cameraGuide.zone2Start, y2 = cameraGuide.zone2End, m = w * 0.07
-                ctx.beginPath(); ctx.moveTo(cameraGuide.leftX(y1)*w, y1*h);  ctx.lineTo(cameraGuide.leftX(y2)*w, y2*h);  ctx.stroke()
-                ctx.beginPath(); ctx.moveTo(cameraGuide.leftX(y1)*w, y1*h);  ctx.lineTo(cameraGuide.leftX(y1)*w+m, y1*h); ctx.stroke()
-                ctx.beginPath(); ctx.moveTo(cameraGuide.rightX(y1)*w, y1*h); ctx.lineTo(cameraGuide.rightX(y2)*w, y2*h);  ctx.stroke()
+                ctx.beginPath(); ctx.moveTo(cameraGuide.leftX(y1)*w,  y1*h); ctx.lineTo(cameraGuide.leftX(y2)*w,  y2*h); ctx.stroke()
+                ctx.beginPath(); ctx.moveTo(cameraGuide.leftX(y1)*w,  y1*h); ctx.lineTo(cameraGuide.leftX(y1)*w+m, y1*h); ctx.stroke()
+                ctx.beginPath(); ctx.moveTo(cameraGuide.rightX(y1)*w, y1*h); ctx.lineTo(cameraGuide.rightX(y2)*w, y2*h); ctx.stroke()
                 ctx.beginPath(); ctx.moveTo(cameraGuide.rightX(y1)*w, y1*h); ctx.lineTo(cameraGuide.rightX(y1)*w-m, y1*h); ctx.stroke()
             }
         }
@@ -148,10 +156,10 @@ Window {
                 var ctx = getContext("2d"), w = width, h = height
                 ctx.clearRect(0, 0, w, h)
                 ctx.strokeStyle = "#44FF44"; ctx.lineWidth = 10; ctx.lineCap = "round"
-                var y1 = 0.0, y2 = cameraGuide.zone1End, m = w * 0.07
-                ctx.beginPath(); ctx.moveTo(cameraGuide.leftX(y1)*w, y1*h);  ctx.lineTo(cameraGuide.leftX(y2)*w, y2*h);  ctx.stroke()
-                ctx.beginPath(); ctx.moveTo(cameraGuide.leftX(y1)*w, y1*h);  ctx.lineTo(cameraGuide.leftX(y1)*w+m, y1*h); ctx.stroke()
-                ctx.beginPath(); ctx.moveTo(cameraGuide.rightX(y1)*w, y1*h); ctx.lineTo(cameraGuide.rightX(y2)*w, y2*h);  ctx.stroke()
+                var y1 = cameraGuide.trapTopY, y2 = cameraGuide.zone1End, m = w * 0.07
+                ctx.beginPath(); ctx.moveTo(cameraGuide.leftX(y1)*w,  y1*h); ctx.lineTo(cameraGuide.leftX(y2)*w,  y2*h); ctx.stroke()
+                ctx.beginPath(); ctx.moveTo(cameraGuide.leftX(y1)*w,  y1*h); ctx.lineTo(cameraGuide.leftX(y1)*w+m, y1*h); ctx.stroke()
+                ctx.beginPath(); ctx.moveTo(cameraGuide.rightX(y1)*w, y1*h); ctx.lineTo(cameraGuide.rightX(y2)*w, y2*h); ctx.stroke()
                 ctx.beginPath(); ctx.moveTo(cameraGuide.rightX(y1)*w, y1*h); ctx.lineTo(cameraGuide.rightX(y1)*w-m, y1*h); ctx.stroke()
             }
         }

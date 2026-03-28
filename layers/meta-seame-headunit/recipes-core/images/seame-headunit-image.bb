@@ -47,6 +47,15 @@ IMAGE_INSTALL:append = " \
     boost \
 "
 
+# NVIDIA GStreamer plugins for hardware video decode (nvv4l2decoder, nvvidconv)
+# Note: gstreamer1.0-plugins-tegra metapackage is excluded above; add only what PDCApp needs.
+# gstreamer1.0-plugins-nvvideo4linux2 is also included via MACHINE_HWCODECS (hwcodecs IMAGE_FEATURE)
+# but listed explicitly here for clarity.
+IMAGE_INSTALL:append = " \
+    gstreamer1.0-plugins-nvvideo4linux2 \
+    gstreamer1.0-plugins-nvvidconv \
+"
+
 # SEAME HU Applications
 IMAGE_INSTALL:append = " \
     unified-compositor \
@@ -115,6 +124,13 @@ setup_sudo() {
     chmod 440 ${IMAGE_ROOTFS}/etc/sudoers.d/weston
 }
 ROOTFS_POSTPROCESS_COMMAND += "setup_sudo; "
+
+# Load nvmap kernel module at boot — required by Tegra multimedia (nvv4l2decoder).
+setup_tegra_modules() {
+    install -d ${IMAGE_ROOTFS}/etc/modules-load.d
+    echo "nvmap" > ${IMAGE_ROOTFS}/etc/modules-load.d/tegra-nvmap.conf
+}
+ROOTFS_POSTPROCESS_COMMAND += "setup_tegra_modules; "
 
 # Pre-create fontconfig cache directory so fontconfig can write on first boot.
 generate_font_cache_dir() {

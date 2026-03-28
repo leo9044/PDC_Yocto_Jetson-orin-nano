@@ -75,8 +75,8 @@ void VehicleControlClient::setupEventSubscriptions()
 
     // Subscribe to vehicleStateChanged event (for gear updates)
     m_proxy->getVehicleStateChangedEvent().subscribe(
-        [this](std::string gear, uint16_t speed, uint8_t battery, uint64_t timestamp) {
-            this->onVehicleStateChanged(gear, speed, battery, timestamp);
+        [this](std::string gear, uint16_t speed, uint16_t voltage, int16_t current, uint64_t timestamp) {
+            this->onVehicleStateChanged(gear, speed, voltage, current, timestamp);
         }
     );
 
@@ -106,10 +106,11 @@ void VehicleControlClient::onGearDistanceChanged(std::string newGear, std::strin
     }
 }
 
-void VehicleControlClient::onVehicleStateChanged(std::string gear, uint16_t speed, uint8_t battery, uint64_t timestamp)
+void VehicleControlClient::onVehicleStateChanged(std::string gear, uint16_t speed, uint16_t voltage, int16_t current, uint64_t timestamp)
 {
     Q_UNUSED(speed);
-    Q_UNUSED(battery);
+    Q_UNUSED(voltage);
+    Q_UNUSED(current);
     Q_UNUSED(timestamp);
 
     QString qGear = QString::fromStdString(gear);

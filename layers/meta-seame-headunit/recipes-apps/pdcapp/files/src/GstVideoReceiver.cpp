@@ -1,5 +1,6 @@
 #include "GstVideoReceiver.h"
 #include <QDebug>
+#include <QMetaObject>
 #include <gst/video/video.h>
 
 GstVideoReceiver::GstVideoReceiver(QObject *parent)
@@ -27,18 +28,23 @@ bool GstVideoReceiver::initialize(int port)
 {
     m_port = port;
 
-    // Runtime NVIDIA decoder detection: use nvv4l2decoder on Jetson if available,
-    // fall back to avdec_h264 (software) on desktop.
+    // Runtime decoder detection: use nvv4l2decoder when both it and nvvidconv are
+    // available (requires CUDA libs and Tegra multimedia stack in the image).
+    // Falls back to avdec_h264 (software) if either plugin is missing.
     QString decoder;
     QString converter;
-    GstElementFactory *nvFactory = gst_element_factory_find("nvv4l2decoder");
-    if (nvFactory) {
-        decoder = "nvv4l2decoder";
+    GstElementFactory *nvDecFactory  = gst_element_factory_find("nvv4l2decoder");
+    GstElementFactory *nvConvFactory = gst_element_factory_find("nvvidconv");
+    if (nvDecFactory && nvConvFactory) {
+        decoder = "nvv4l2decoder enable-max-performance=1";
         // nvvidconv cannot output BGRA directly — cap it to RGBA, then videoconvert does RGBA→BGRA
         converter = "nvvidconv ! video/x-raw,format=RGBA ! videoconvert";
-        gst_object_unref(nvFactory);
+        gst_object_unref(nvDecFactory);
+        gst_object_unref(nvConvFactory);
         qDebug() << "[GstVideoReceiver] Using NVIDIA hardware decoder (nvv4l2decoder)";
     } else {
+        if (nvDecFactory)  gst_object_unref(nvDecFactory);
+        if (nvConvFactory) gst_object_unref(nvConvFactory);
         decoder = "avdec_h264";
         converter = "videoconvert";
         qDebug() << "[GstVideoReceiver] Using software decoder (avdec_h264)";
@@ -48,7 +54,6 @@ bool GstVideoReceiver::initialize(int port)
     // UDP source -> RTP depay -> H264 parse -> decode -> convert -> appsink
     QString pipelineStr = QString(
         "udpsrc port=%1 buffer-size=2097152 caps=\"application/x-rtp,encoding-name=H264,payload=96\" ! "
-        "rtpjitterbuffer latency=100 ! "
         "rtph264depay ! "
         "h264parse ! "
         "%2 ! "
@@ -197,7 +202,9 @@ void GstVideoReceiver::processFrame(GstSample *sample)
 
         gst_video_frame_unmap(&videoFrame);
 
-        emit frameReady();
+        // Emit frameReady on the Qt main thread — GStreamer callbacks run on a
+        // POSIX thread (not a QThread), so direct emit may not queue correctly.
+        QMetaObject::invokeMethod(this, "frameReady", Qt::QueuedConnection);
     }
 }
 
